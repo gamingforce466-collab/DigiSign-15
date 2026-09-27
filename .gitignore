@@ -1,0 +1,14 @@
+storage/keys/*
+storage/documents/*
+storage/signatures/*
+!storage/keys/.gitkeep
+!storage/documents/.gitkeep
+!storage/signatures/.gitkeep
+.env
+venv/
+env/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log
+.DS_Store

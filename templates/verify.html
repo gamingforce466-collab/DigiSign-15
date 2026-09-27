@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verifikasi Dokumen - Digital Signature System</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-slate-100 min-h-screen">
+<nav class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+<span class="text-xl font-bold">DigiSign</span>
+<div class="space-x-4">
+<a href="{{ url_for('index') }}" class="hover:text-sky-400">Dashboard</a>
+<a href="{{ url_for('sign_page') }}" class="hover:text-sky-400">Tanda Tangan</a>
+<a href="{{ url_for('verify_page') }}" class="hover:text-sky-400">Verifikasi</a>
+</div>
+</nav>
+<main class="max-w-3xl mx-auto p-6">
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="mb-4 space-y-2">
+{% for category, message in messages %}
+<div class="px-4 py-3 rounded {{ 'bg-red-100 text-red-700' if category == 'error' else 'bg-green-100 text-green-700' }}">{{ message }}</div>
+{% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+<div class="bg-white rounded-xl shadow p-6">
+<h2 class="text-lg font-semibold mb-4 text-slate-800">Verifikasi Keaslian Dokumen</h2>
+<form method="POST" enctype="multipart/form-data" class="space-y-3">
+<input type="file" name="document" accept="application/pdf" required class="w-full border rounded px-3 py-2">
+<input type="text" name="doc_id" placeholder="Doc ID (opsional jika QR-Code terbaca otomatis)" class="w-full border rounded px-3 py-2">
+<input type="file" name="override_public_key" accept=".pem" class="w-full border rounded px-3 py-2">
+<p class="text-xs text-slate-400">Unggah kunci publik lain untuk menguji skenario kunci yang tidak cocok</p>
+<button type="submit" class="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">Verifikasi</button>
+</form>
+</div>
+
+{% if results %}
+<div class="bg-white rounded-xl shadow p-6 mt-6">
+<h2 class="text-lg font-semibold mb-4 text-slate-800">Hasil Verifikasi</h2>
+{% if results.error %}
+<p class="text-red-600">{{ results.error }}</p>
+{% else %}
+<p class="mb-2">Doc ID: <span class="font-mono">{{ results.doc_id }}</span></p>
+<p class="mb-2">Integritas Dokumen:
+<span class="{{ 'text-green-600 font-semibold' if results.integrity_ok else 'text-red-600 font-semibold' }}">
+{{ 'UTUH' if results.integrity_ok else 'DIUBAH / TIDAK COCOK' }}
+</span>
+</p>
+<p class="mb-4">Status Keseluruhan:
+<span class="{{ 'text-green-600 font-bold' if results.overall_valid else 'text-red-600 font-bold' }}">
+{{ 'VALID' if results.overall_valid else 'TIDAK VALID' }}
+</span>
+</p>
+<table class="w-full text-left text-sm mb-4">
+<thead>
+<tr class="border-b text-slate-500">
+<th class="py-2">Nama</th>
+<th class="py-2">Jabatan</th>
+<th class="py-2">Institusi</th>
+<th class="py-2">Tanggal</th>
+<th class="py-2">Tanda Tangan</th>
+</tr>
+</thead>
+<tbody>
+{% for s in results.signers %}
+<tr class="border-b">
+<td class="py-2">{{ s.signer_name }}</td>
+<td class="py-2">{{ s.position }}</td>
+<td class="py-2">{{ s.institution }}</td>
+<td class="py-2">{{ s.signed_date }}</td>
+<td class="py-2 {{ 'text-green-600' if s.signature_valid else 'text-red-600' }}">{{ 'Valid' if s.signature_valid else 'Tidak Valid' }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
+</div>
+{% endif %}
+</main>
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
