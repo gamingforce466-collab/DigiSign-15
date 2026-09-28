@@ -47,6 +47,11 @@ def save_signature_record(doc_id, record):
         json.dump(record, f, indent=2)
 
 
+def known_hashes(record):
+    """Hash sah suatu dokumen: berkas asli + setiap versi berkas bertanda tangan (bertambah tiap penandatangan)."""
+    return {record["content_hash_hex"], *record.get("signed_hashes", [])}
+
+
 def list_signature_records():
     records = []
     for path in sorted(SIGNATURES_DIR.glob("*.json")):
@@ -123,6 +128,7 @@ def sign_page():
             "doc_id": doc_id,
             "original_filename": uploaded_file.filename,
             "content_hash_hex": content_digest.hex(),
+            "signed_hashes": [],
             "created_at": datetime.utcnow().isoformat(),
             "signers": []
         }
@@ -136,7 +142,7 @@ def sign_page():
             uploaded_file.save(str(temp_check_path))
             new_digest = pdf_module.compute_content_digest(str(temp_check_path))
             temp_check_path.unlink(missing_ok=True)
-            if new_digest != content_digest:
+            if new_digest.hex() not in known_hashes(record):
                 flash("Isi dokumen tidak cocok dengan dokumen asli, penandatanganan dibatalkan", "error")
                 return redirect(url_for("sign_page"))
         working_path = original_path
@@ -156,7 +162,6 @@ def sign_page():
         "signature_b64": base64.b64encode(signature).decode("utf-8")
     }
     record["signers"].append(signer_entry)
-    save_signature_record(doc_id, record)
 
     qr_images = []
     for entry in record["signers"]:
@@ -174,6 +179,10 @@ def sign_page():
 
     signed_output_path = DOCUMENTS_DIR / f"{doc_id}_signed.pdf"
     pdf_module.embed_qr_images(str(working_path), qr_images, str(signed_output_path))
+
+    signed_hash_hex = pdf_module.compute_content_digest(str(signed_output_path)).hex()
+    record.setdefault("signed_hashes", []).append(signed_hash_hex)
+    save_signature_record(doc_id, record)
 
     flash("Dokumen berhasil ditandatangani secara digital", "success")
     return render_template(
@@ -234,11 +243,16 @@ def verify_page():
         current_digest = None
 
     stored_digest = bytes.fromhex(record["content_hash_hex"])
-    integrity_ok = current_digest is not None and current_digest == stored_digest
+    integrity_ok = current_digest is not None and current_digest.hex() in known_hashes(record)
 
     override_public_key = None
     if override_key_file and override_key_file.filename:
-        override_public_key = key_module.load_public_key_from_pem(override_key_file.read())
+        try:
+            override_public_key = key_module.load_public_key_from_pem(override_key_file.read())
+        except Exception:
+            temp_path.unlink(missing_ok=True)
+            results = {"error": "Berkas kunci publik tidak valid (harus berformat PEM)"}
+            return render_template("verify.html", results=results)
 
     signer_results = []
     for entry in record["signers"]:
@@ -270,4 +284,4 @@ def verify_page():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.environ.get("FLASK_DEBUG", "0") == "1")

@@ -14,17 +14,21 @@ def extract_text_content(source):
     return "\n".join(parts)
 
 
-def compute_content_digest(source):
-    content = extract_text_content(source)
-    return hashlib.sha256(content.encode("utf-8")).digest()
-
-
-def compute_file_sha256(path):
+def compute_file_digest(path):
+    """SHA-256 (bytes) atas SELURUH byte berkas, bukan hanya teks hasil ekstraksi."""
     hasher = hashlib.sha256()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             hasher.update(chunk)
-    return hasher.hexdigest()
+    return hasher.digest()
+
+
+def compute_content_digest(source):
+    return compute_file_digest(source)
+
+
+def compute_file_sha256(path):
+    return compute_file_digest(path).hex()
 
 
 def embed_qr_images(input_path, qr_images, output_path):

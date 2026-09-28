@@ -1,5 +1,6 @@
 import sys
 import os
+import hashlib
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -55,32 +56,41 @@ def test_tampered_document_fails(tmp_path):
 
 
 def test_byte_flip_tamper_detected(tmp_path):
+    """Ubah SATU byte di SETIAP posisi berkas (teks, struktur, metadata) -> verifikasi harus selalu gagal."""
     private_key = key_module.load_private_key(TEST_OWNER, TEST_PASSPHRASE)
     public_key = key_module.load_public_key(TEST_OWNER)
     original_path = tmp_path / "byteflip.pdf"
-    marker = b"Dokumen untuk uji perubahan satu byte"
-    make_sample_pdf(original_path, marker.decode("utf-8"))
+    make_sample_pdf(original_path, "Dokumen untuk uji perubahan satu byte")
     original_digest = pdf_module.compute_content_digest(str(original_path))
     signature = signer_module.sign_digest(private_key, original_digest)
+    original_bytes = original_path.read_bytes()
 
-    with open(original_path, "r+b") as f:
-        data = bytearray(f.read())
-        idx = bytes(data).find(marker)
-        assert idx != -1
-        data[idx] = data[idx] ^ 0xFF
-        f.seek(0)
-        f.write(data)
-        f.truncate()
+    tampered_path = tmp_path / "byteflip_tampered.pdf"
+    for idx in range(len(original_bytes)):
+        data = bytearray(original_bytes)
+        data[idx] ^= 0x01
+        tampered_path.write_bytes(bytes(data))
+        new_digest = pdf_module.compute_content_digest(str(tampered_path))
+        assert new_digest != original_digest, f"perubahan byte ke-{idx} tidak terdeteksi"
+        assert verifier_module.verify_digest(public_key, new_digest, signature) is False
 
-    try:
-        new_digest = pdf_module.compute_content_digest(str(original_path))
-        integrity_preserved = new_digest == original_digest
-        signature_valid = verifier_module.verify_digest(public_key, new_digest, signature)
-        result_ok = integrity_preserved and signature_valid
-    except Exception:
-        result_ok = False
 
-    assert result_ok is False
+def test_non_text_byte_change_detected(tmp_path):
+    """Perubahan di luar teks (mis. byte terakhir/trailer) juga harus terdeteksi."""
+    pdf_path = tmp_path / "trailer.pdf"
+    make_sample_pdf(pdf_path, "Uji perubahan di luar teks")
+    original_digest = pdf_module.compute_content_digest(str(pdf_path))
+    data = bytearray(pdf_path.read_bytes())
+    data[-1] ^= 0xFF
+    pdf_path.write_bytes(bytes(data))
+    assert pdf_module.compute_content_digest(str(pdf_path)) != original_digest
+
+
+def test_digest_covers_whole_file(tmp_path):
+    pdf_path = tmp_path / "whole.pdf"
+    make_sample_pdf(pdf_path, "Digest harus sama dengan SHA-256 seluruh byte berkas")
+    expected = hashlib.sha256(pdf_path.read_bytes()).digest()
+    assert pdf_module.compute_content_digest(str(pdf_path)) == expected
 
 
 def test_wrong_public_key_fails(tmp_path):
