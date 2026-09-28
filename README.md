@@ -78,7 +78,7 @@ Cakupan pengujian:
 - `test_tamper.py`: verifikasi terhadap dokumen yang diubah isinya (harus gagal), pengubahan satu byte pada berkas (harus gagal), dan penggunaan kunci publik yang salah (harus gagal).
 - `test_qr.py`: pembuatan dan pembacaan QR-Code, serta deteksi ketidakcocokan metadata QR-Code yang dipalsukan.
 
-## Skenario Demo (UTS)
+## Skenario Pengujian
 
 1. Buat pasangan kunci RSA di halaman `/sign`.
 2. Tandatangani sebuah dokumen PDF (misal surat keterangan), unduh hasilnya yang memuat QR-Code.
@@ -92,12 +92,4 @@ Cakupan pengujian:
 - Seluruh nilai acak kriptografis (kunci RSA, salt, IV enkripsi kunci privat) dibangkitkan melalui CSPRNG bawaan pustaka `cryptography` (berbasis `os.urandom`).
 - Tidak digunakan algoritma usang (MD5, SHA-1, DES, RC4, mode ECB) untuk fitur keamanan utama; hash dokumen menggunakan SHA-256 dan tanda tangan menggunakan RSA-PSS.
 
-## Anggota Kelompok
-_____________________________________________________
-|               Nama                 |     NPM      |
------------------------------------------------------
-|Raffa Erlangga                      |              |
-|Rozan Aqila Daris                   |              |
-|Rossyada Adly                       | 247006111169 |
------------------------------------------------------
-```
+
