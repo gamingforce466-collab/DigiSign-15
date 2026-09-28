@@ -43,19 +43,12 @@ DigitalSignature/
    ```
 4. Sesuaikan isi `.env` sesuai kebutuhan (secret key Flask dan URL verifikasi).
 
-python -m pip install --upgrade pip
-pip install -r requirements.txt
 
 ```
-`requirements.txt` menggunakan batas versi minimum (bukan pin persis) agar pip dapat memilih wheel yang cocok dengan sistem operasi dan versi Python Anda secara otomatis.
 
 ## Menjalankan Aplikasi
 
-```
-
 python app.py
-
-```
 
 Aplikasi akan berjalan di `http://localhost:5000`.
 
@@ -64,6 +57,8 @@ Alur penggunaan:
 2. Unggah dokumen PDF, isi data penandatangan (nama, jabatan, institusi, tanggal), lalu tandatangani. Untuk menambahkan penandatangan kedua pada dokumen yang sama, isi kolom **Doc ID** yang diberikan pada hasil penandatanganan sebelumnya.
 3. Unduh PDF hasil tanda tangan yang telah memuat QR-Code.
 4. Buka `/verify`, unggah PDF tersebut untuk memverifikasi integritas dokumen dan keabsahan seluruh tanda tangan.
+
+```
 
 ## Menjalankan Pengujian
 
