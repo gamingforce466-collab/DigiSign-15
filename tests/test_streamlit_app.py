@@ -272,6 +272,32 @@ def test_streamlit_demo_controls_and_benchmark_render(demo_storage):
     assert app.session_state["benchmark_report"]["tamper"]["all_passed"] is True
 
 
+def test_streamlit_end_to_end_demo_persists_key_and_verifies_document(demo_storage):
+    documents_dir, signatures_dir, keys_dir = demo_storage
+    app = _logged_in_app()
+    app.radio(key="page").set_value("Demo End-to-End").run()
+    app.button(key="run_end_to_end_demo").click().run(timeout=60)
+
+    assert not app.exception, app.exception
+    assert not app.error, [message.value for message in app.error]
+    record = next(record for record in app_module.list_signature_records() if record.get("demo_results"))
+    owner_id = "demo_digisign"
+    doc_id = record["doc_id"]
+    assert record["demo_results"] == {"valid": "VALID", "tampered": "TAMPERED"}
+    assert key_module.key_exists(owner_id)
+    key_module.load_private_key(owner_id, ACCESS_PASSWORD)
+    assert (keys_dir / f"{owner_id}_private.pem").is_file()
+    assert (keys_dir / f"{owner_id}_public.pem").is_file()
+    assert (documents_dir / f"{doc_id}_signed.pdf").is_file()
+    assert (signatures_dir / f"{doc_id}.json").is_file()
+
+    reopened_app = _logged_in_app()
+    reopened_app.radio(key="page").set_value("Demo End-to-End").run()
+    assert not reopened_app.exception, reopened_app.exception
+    assert any(metric.value == "VALID" for metric in reopened_app.metric)
+    assert any(metric.value == "TAMPERED" for metric in reopened_app.metric)
+
+
 def test_streamlit_random_key_and_signer_controls_work(demo_storage):
     _, _, keys_dir = demo_storage
     app = _logged_in_app()
