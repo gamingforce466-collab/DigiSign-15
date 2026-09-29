@@ -72,7 +72,6 @@ Semua pustaka Python tercantum di `requirements.txt`:
 ### Windows (PowerShell)
 
 ```
-git clone https://github.com/gamingforce466-collab/DigiSign-15
 python -m venv venv
 venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
@@ -91,8 +90,6 @@ Atau pakai Command Prompt: `venv\Scripts\activate.bat`.
 ### Linux dan macOS
 
 ```
-git clone https://github.com/gamingforce466-collab/DigiSign-15
-cd https://github.com/gamingforce466-collab/DigiSign-15
 python3 -m venv venv
 source venv/bin/activate
 python -m pip install --upgrade pip
