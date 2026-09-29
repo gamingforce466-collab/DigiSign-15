@@ -11,7 +11,6 @@ from flask import (
     Flask, render_template, request, redirect, url_for,
     send_from_directory, send_file, flash, jsonify, abort
 )
-
 from dotenv import load_dotenv
 
 from crypto import keys as key_module

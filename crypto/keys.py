@@ -63,7 +63,6 @@ def list_keys():
     for path in KEYS_DIR.glob("*_public.pem"):
         owners.add(path.name.replace("_public.pem", ""))
     return sorted(owners)
-<<<<<<< HEAD
 
 
 def delete_keypair(owner_id):
@@ -75,5 +74,3 @@ def delete_keypair(owner_id):
 def generate_ephemeral_public_key():
     """Kunci publik RSA-2048 sementara (tidak disimpan) untuk skenario uji 'kunci salah'."""
     return rsa.generate_private_key(public_exponent=65537, key_size=2048).public_key()
-=======
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194

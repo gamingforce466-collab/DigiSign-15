@@ -3,7 +3,6 @@ from io import BytesIO
 from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
-<<<<<<< HEAD
 from reportlab.pdfbase.pdfmetrics import stringWidth
 
 # Ukuran blok tanda tangan digital (satuan point PDF)
@@ -19,8 +18,6 @@ BLOCK_HEIGHT = (
     BLOCK_PAD + BLOCK_HEADER_H + BLOCK_QR_SIZE + 3
     + BLOCK_TEXT_LINE_H * BLOCK_TEXT_LINES + BLOCK_PAD
 )
-=======
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
 
 
 def extract_text_content(source):
@@ -49,7 +46,6 @@ def compute_file_sha256(path):
     return compute_file_digest(path).hex()
 
 
-<<<<<<< HEAD
 def _fit_text(text, font, size, max_width):
     """Sanitasi ke Latin-1 dan potong dengan '..' bila melebihi lebar blok."""
     text = (text or "").strip().encode("latin-1", "replace").decode("latin-1")
@@ -101,9 +97,6 @@ def embed_qr_images(input_path, qr_images, output_path, signers=None):
     dengan identitasnya, disusun dari kiri ke kanan dan turun-naik baris bila halaman penuh.
     Tanpa `signers`, perilaku lama dipertahankan (deretan QR polos).
     """
-=======
-def embed_qr_images(input_path, qr_images, output_path):
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
     reader = PdfReader(input_path)
     writer = PdfWriter()
     last_index = len(reader.pages) - 1
@@ -113,7 +106,6 @@ def embed_qr_images(input_path, qr_images, output_path):
             page_height = float(page.mediabox.height)
             buffer = BytesIO()
             c = canvas.Canvas(buffer, pagesize=(page_width, page_height))
-<<<<<<< HEAD
             if signers and len(signers) == len(qr_images):
                 columns = max(1, int((page_width - 2 * PAGE_MARGIN + BLOCK_GAP) // (BLOCK_WIDTH + BLOCK_GAP)))
                 for n, (qr_image, info) in enumerate(zip(qr_images, signers), start=1):
@@ -137,21 +129,6 @@ def embed_qr_images(input_path, qr_images, output_path):
             new_page = writer.add_page(page)
             new_page.merge_page(overlay_reader.pages[0])
             continue
-=======
-            qr_size = 90
-            margin = 20
-            spacing = 10
-            x = page_width - margin - qr_size
-            y = margin
-            for qr_image in qr_images:
-                image_reader = ImageReader(qr_image)
-                c.drawImage(image_reader, x, y, width=qr_size, height=qr_size, mask="auto")
-                x -= (qr_size + spacing)
-            c.save()
-            buffer.seek(0)
-            overlay_reader = PdfReader(buffer)
-            page.merge_page(overlay_reader.pages[0])
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
         writer.add_page(page)
     with open(output_path, "wb") as f:
         writer.write(f)
@@ -169,7 +146,6 @@ def extract_embedded_images(path):
     return images
 
 
-<<<<<<< HEAD
 def is_valid_pdf_bytes(data):
     """True bila `data` dapat dibaca sebagai PDF yang memiliki minimal satu halaman."""
     try:
@@ -178,8 +154,6 @@ def is_valid_pdf_bytes(data):
         return False
 
 
-=======
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
 def get_page_count(path):
     reader = PdfReader(path)
     return len(reader.pages)

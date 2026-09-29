@@ -15,7 +15,6 @@ document.addEventListener("DOMContentLoaded", function () {
       el.style.opacity = "0";
     }, 5000);
   });
-<<<<<<< HEAD
 
   initKeyForm();
   initSignForm();
@@ -155,6 +154,3 @@ function initSignForm() {
     });
   });
 }
-=======
-});
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194

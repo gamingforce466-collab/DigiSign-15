@@ -13,7 +13,6 @@ def generate_qr_image(metadata):
     return img
 
 
-<<<<<<< HEAD
 def _detector_factories():
     """Detektor QR OpenCV, berurutan dari yang paling andal.
 
@@ -29,13 +28,10 @@ def _detector_factories():
     return factories
 
 
-=======
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
 def decode_qr_image(pil_image):
     rgb = pil_image.convert("RGB")
     arr = np.array(rgb)
     bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
-<<<<<<< HEAD
     padded = cv2.copyMakeBorder(bgr, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=(255, 255, 255))
     for factory in _detector_factories():
         for candidate in (bgr, padded):
@@ -52,16 +48,6 @@ def decode_qr_image(pil_image):
             if isinstance(parsed, dict):
                 return parsed
     return None
-=======
-    detector = cv2.QRCodeDetector()
-    data, points, _ = detector.detectAndDecode(bgr)
-    if not data:
-        return None
-    try:
-        return json.loads(data)
-    except json.JSONDecodeError:
-        return None
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
 
 
 def decode_qr_from_images(pil_images):

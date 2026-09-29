@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 {% extends "base.html" %}
 {% block title %}Tanda Tangan{% endblock %}
 {% block width %}max-w-3xl{% endblock %}
@@ -16,48 +15,10 @@
 <input type="password" name="passphrase" id="key-pass-input" placeholder="Passphrase" required class="w-full border rounded px-3 py-2">
 <p id="key-random-hint" class="text-xs text-slate-500 hidden"></p>
 <button type="submit" class="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">Buat Kunci</button>
-=======
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tanda Tangan Dokumen - Digital Signature System</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body class="bg-slate-100 min-h-screen">
-<nav class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
-<span class="text-xl font-bold">DigiSign</span>
-<div class="space-x-4">
-<a href="{{ url_for('index') }}" class="hover:text-sky-400">Dashboard</a>
-<a href="{{ url_for('sign_page') }}" class="hover:text-sky-400">Tanda Tangan</a>
-<a href="{{ url_for('verify_page') }}" class="hover:text-sky-400">Verifikasi</a>
-</div>
-</nav>
-<main class="max-w-3xl mx-auto p-6">
-{% with messages = get_flashed_messages(with_categories=true) %}
-{% if messages %}
-<div class="mb-4 space-y-2">
-{% for category, message in messages %}
-<div class="px-4 py-3 rounded {{ 'bg-red-100 text-red-700' if category == 'error' else 'bg-green-100 text-green-700' }}">{{ message }}</div>
-{% endfor %}
-</div>
-{% endif %}
-{% endwith %}
-
-<div class="bg-white rounded-xl shadow p-6 mb-6">
-<h2 class="text-lg font-semibold mb-4 text-slate-800">Buat Pasangan Kunci Baru (RSA 2048-bit)</h2>
-<form method="POST" action="{{ url_for('generate_keys') }}" class="space-y-3">
-<input type="text" name="owner_id" placeholder="Nama Pemilik Kunci" required class="w-full border rounded px-3 py-2">
-<input type="password" name="passphrase" placeholder="Passphrase Enkripsi Kunci Privat" required class="w-full border rounded px-3 py-2">
-<button type="submit" class="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">Generate Kunci</button>
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
 </form>
 </div>
 
 <div class="bg-white rounded-xl shadow p-6">
-<<<<<<< HEAD
 <div class="flex items-center justify-between mb-4">
 <h2 class="text-lg font-semibold text-slate-800">2. Tandatangani PDF</h2>
 {% if test_tools %}
@@ -78,18 +39,10 @@
 <label class="block text-sm text-slate-600 mb-1">Kunci penandatangan</label>
 <select name="owner_id" id="owner-select" required class="w-full border rounded px-3 py-2">
 <option value="" disabled selected>Pilih kunci</option>
-=======
-<h2 class="text-lg font-semibold mb-4 text-slate-800">Tandatangani Dokumen PDF</h2>
-<form method="POST" enctype="multipart/form-data" class="space-y-3">
-<input type="text" name="doc_id" placeholder="Doc ID (kosongkan jika dokumen baru, isi untuk menambah penandatangan)" class="w-full border rounded px-3 py-2">
-<select name="owner_id" required class="w-full border rounded px-3 py-2">
-<option value="" disabled selected>Pilih Kunci Penandatangan</option>
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
 {% for owner in key_owners %}
 <option value="{{ owner }}">{{ owner }}</option>
 {% endfor %}
 </select>
-<<<<<<< HEAD
 </div>
 <input type="password" name="passphrase" id="sign-pass" placeholder="Passphrase kunci" required class="w-full border rounded px-3 py-2">
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -103,21 +56,11 @@
 </div>
 <p id="sign-random-hint" class="text-xs text-slate-500 hidden"></p>
 <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">Tandatangani</button>
-=======
-<input type="password" name="passphrase" placeholder="Passphrase Kunci Privat" required class="w-full border rounded px-3 py-2">
-<input type="text" name="signer_name" placeholder="Nama Penandatangan" required class="w-full border rounded px-3 py-2">
-<input type="text" name="position" placeholder="Jabatan" class="w-full border rounded px-3 py-2">
-<input type="text" name="institution" placeholder="Institusi" class="w-full border rounded px-3 py-2">
-<input type="date" name="signed_date" class="w-full border rounded px-3 py-2">
-<input type="file" name="document" accept="application/pdf" class="w-full border rounded px-3 py-2">
-<button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">Tandatangani Dokumen</button>
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
 </form>
 </div>
 
 {% if result %}
 <div class="bg-white rounded-xl shadow p-6 mt-6">
-<<<<<<< HEAD
 <div class="flex items-center justify-between mb-3">
 <h2 class="text-lg font-semibold text-slate-800">Hasil</h2>
 <span class="px-3 py-1 rounded-full text-sm font-semibold {{ 'bg-emerald-100 text-emerald-700' if result.signers|length > 1 else 'bg-sky-100 text-sky-700' }}">{{ result.signers|length }} tanda tangan</span>
@@ -161,17 +104,3 @@
 </div>
 {% endif %}
 {% endblock %}
-=======
-<h2 class="text-lg font-semibold mb-3 text-slate-800">Hasil Penandatanganan</h2>
-<p class="text-sm text-slate-600 mb-2">Doc ID: <span class="font-mono">{{ doc_id }}</span></p>
-<p class="text-sm text-slate-600 mb-4">Jumlah Penandatangan: {{ result.signers|length }}</p>
-{% if download_ready %}
-<a href="{{ url_for('download_signed', doc_id=doc_id) }}" class="inline-block bg-slate-800 text-white px-4 py-2 rounded hover:bg-slate-900">Unduh PDF Bertanda Tangan</a>
-{% endif %}
-</div>
-{% endif %}
-</main>
-<script src="{{ url_for('static', filename='js/script.js') }}"></script>
-</body>
-</html>
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194

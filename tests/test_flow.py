@@ -18,7 +18,6 @@ PASS_A = "pytest_flow_pass_a"
 PASS_B = "pytest_flow_pass_b"
 
 
-<<<<<<< HEAD
 def status_block(code):
     return f'<p class="text-2xl font-bold">{code}</p>'
 
@@ -26,8 +25,6 @@ def status_block(code):
 STATUS_VALID = status_block("VALID")
 
 
-=======
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
 def make_pdf_bytes(text):
     buf = io.BytesIO()
     c = canvas.Canvas(buf)
@@ -87,12 +84,7 @@ def test_sign_then_verify_signed_pdf_passes(client):
     signed = (docs / f"{doc_id}_signed.pdf").read_bytes()
     html = verify(c, signed, doc_id)
     assert "UTUH" in html
-<<<<<<< HEAD
     assert STATUS_VALID in html
-=======
-    assert "DIUBAH / TIDAK COCOK" not in html
-    assert "TIDAK VALID" not in html
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
 
 
 def test_one_byte_change_in_signed_pdf_fails(client):
@@ -105,13 +97,8 @@ def test_one_byte_change_in_signed_pdf_fails(client):
     assert record["signed_hashes"]
     assert hashlib.sha256(bytes(signed)).hexdigest() not in record["signed_hashes"]
     html = verify(c, bytes(signed), doc_id)
-<<<<<<< HEAD
     assert "BERUBAH" in html
     assert status_block("TAMPERED") in html
-=======
-    assert "DIUBAH / TIDAK COCOK" in html
-    assert "TIDAK VALID" in html
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
 
 
 def test_multi_signer_keeps_all_versions_valid(client):
@@ -129,8 +116,4 @@ def test_multi_signer_keeps_all_versions_valid(client):
     assert hashlib.sha256(version2).hexdigest() in app_module.known_hashes(record)
     for version in (version1, version2):
         html = verify(c, version, doc_id)
-<<<<<<< HEAD
         assert "UTUH" in html and STATUS_VALID in html
-=======
-        assert "UTUH" in html and "TIDAK VALID" not in html
->>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
