@@ -52,9 +52,9 @@ def _enabled(name, default=False):
 
 
 def _require_access():
-    if len(ACCESS_PASSWORD) < 16:
+    if len(ACCESS_PASSWORD) < 8:
         st.title("DigiSign")
-        st.error("Aplikasi terkunci. Atur STREAMLIT_ACCESS_PASSWORD minimal 16 karakter di Secrets.")
+        st.error("Aplikasi terkunci. Atur STREAMLIT_ACCESS_PASSWORD minimal 8 karakter di Secrets.")
         st.stop()
 
     if st.session_state.get("authenticated"):
