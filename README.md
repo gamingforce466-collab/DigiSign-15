@@ -1,6 +1,6 @@
 Aplikasi web tanda tangan digital untuk dokumen PDF. Dokumen ditandatangani dengan RSA-2048 (skema PSS, SHA-256), disisipi QR-Code berisi metadata penandatangan, lalu keasliannya dapat diverifikasi. Contoh pemakaian: surat keterangan, sertifikat kegiatan, dan lembar pengesahan laporan.
 
-### Anggota Kelompok
+###  Kelompok 15
 
 | No. | Nama Lengkap | NPM |
 | :-: | :--- | :-: |
