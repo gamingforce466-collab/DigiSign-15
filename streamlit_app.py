@@ -134,6 +134,9 @@ def _render_home():
 
 def _render_key_creation():
     st.subheader("Buat pasangan kunci")
+    created_owner = st.session_state.pop("created_key_owner", None)
+    if created_owner:
+        st.success(f"Pasangan kunci RSA-2048 untuk `{created_owner}` berhasil dibuat.")
     if st.button("Isi data kunci acak", key="random_key_data"):
         st.session_state["new_key_owner"] = randomdata.random_owner_id()
         st.session_state["new_key_passphrase"] = randomdata.random_passphrase()
@@ -156,7 +159,8 @@ def _render_key_creation():
             except Exception as exc:
                 st.error(f"Kunci gagal dibuat: {exc}")
             else:
-                st.success(f"Pasangan kunci RSA-2048 untuk `{owner_id}` berhasil dibuat.")
+                st.session_state["created_key_owner"] = owner_id
+                st.rerun()
 
 
 def _render_signing():

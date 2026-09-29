@@ -254,6 +254,7 @@ def test_streamlit_random_key_and_signer_controls_work(demo_storage):
     app.button(key="FormSubmitter:create_key_form-Buat kunci").click().run()
     assert key_module.key_exists(owner_id)
     assert (keys_dir / f"{owner_id}_private.pem").is_file()
+    assert owner_id in app.selectbox[1].options
 
     next(button for button in app.button if button.label == "Isi data penandatangan acak").click().run()
     assert app.text_input(key="signer_name").value
