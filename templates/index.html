@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Beranda{% endblock %}
+{% block width %}max-w-5xl{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-slate-800 mb-1">Aplikasi Tanda Tangan Digital</h1>
+<p class="text-slate-600 mb-6">Tandatangani PDF dengan RSA-2048 (PSS, SHA-256), lalu verifikasi lewat QR-Code.</p>
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+<div class="bg-white rounded-xl shadow p-5">
+<p class="text-slate-500 text-sm">Dokumen</p>
+<p class="text-3xl font-bold text-slate-800">{{ total_documents }}</p>
+</div>
+<div class="bg-white rounded-xl shadow p-5">
+<p class="text-slate-500 text-sm">Tanda tangan</p>
+<p class="text-3xl font-bold text-slate-800">{{ total_signers }}</p>
+</div>
+<div class="bg-white rounded-xl shadow p-5">
+<p class="text-slate-500 text-sm">Pasangan kunci</p>
+<p class="text-3xl font-bold text-slate-800">{{ key_owners|length }}</p>
+</div>
+</div>
+
+<div class="bg-white rounded-xl shadow p-5 mb-6 flex flex-wrap items-center justify-between gap-3">
+<div>
+<h2 class="text-lg font-semibold text-slate-800">Mulai pengujian baru</h2>
+<p class="text-sm text-slate-500">Menghapus semua kunci, dokumen, dan data tanda tangan.</p>
+</div>
+<form method="POST" action="{{ url_for('clear_all') }}" onsubmit="return confirm('Hapus SEMUA kunci, dokumen, dan tanda tangan? Tindakan ini tidak bisa dibatalkan.');">
+<button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Bersihkan semua data</button>
+</form>
+</div>
+
+<div class="bg-white rounded-xl shadow p-5 mb-6">
+<h2 class="text-lg font-semibold mb-2 text-slate-800">Cara pakai</h2>
+<ol class="list-decimal list-inside text-sm text-slate-600 space-y-1">
+<li>Buat kunci di menu <a href="{{ url_for('sign_page') }}" class="text-sky-600 underline">Tanda Tangan</a>.</li>
+<li>Unggah PDF, isi data penandatangan, lalu tandatangani.</li>
+<li>Unduh PDF yang sudah memuat QR-Code.</li>
+<li>Cek keasliannya di menu <a href="{{ url_for('verify_page') }}" class="text-sky-600 underline">Verifikasi</a>.</li>
+</ol>
+</div>
+
+<div class="bg-white rounded-xl shadow p-5 mb-6">
+<h2 class="text-lg font-semibold mb-2 text-slate-800">Kunci</h2>
+{% if key_owners %}
+<div class="flex flex-wrap gap-2">
+{% for owner in key_owners %}
+<span class="px-2 py-1 bg-slate-100 rounded text-sm font-mono">{{ owner }}</span>
+{% endfor %}
+</div>
+{% else %}
+<p class="text-slate-400 text-sm">Belum ada kunci.</p>
+{% endif %}
+</div>
+
+<div class="bg-white rounded-xl shadow p-5">
+<h2 class="text-lg font-semibold mb-3 text-slate-800">Dokumen</h2>
+{% if records %}
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm">
+<thead>
+<tr class="border-b text-slate-500">
+<th class="py-2 pr-3">Doc ID</th>
+<th class="py-2 pr-3">Berkas</th>
+<th class="py-2 pr-3">Penandatangan</th>
+<th class="py-2 pr-3">Dibuat</th>
+<th class="py-2">Aksi</th>
+</tr>
+</thead>
+<tbody>
+{% for r in records %}
+<tr class="border-b">
+<td class="py-2 pr-3 font-mono">{{ r.doc_id }}</td>
+<td class="py-2 pr-3">{{ r.original_filename }}</td>
+<td class="py-2 pr-3">{{ r.signers|length }}</td>
+<td class="py-2 pr-3 whitespace-nowrap">{{ r.created_at[:16].replace('T', ' ') }}</td>
+<td class="py-2 space-x-2 whitespace-nowrap">
+<a href="{{ url_for('preview_signed', doc_id=r.doc_id) }}" target="_blank" class="text-sky-600 hover:underline">Lihat</a>
+<a href="{{ url_for('download_signed', doc_id=r.doc_id) }}" class="text-sky-600 hover:underline">Unduh</a>
+<a href="{{ url_for('sign_page', doc_id=r.doc_id) }}" class="text-emerald-600 hover:underline">Tambah TTD</a>
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% else %}
+<p class="text-slate-400 text-sm">Belum ada dokumen.</p>
+{% endif %}
+</div>
+{% endblock %}
