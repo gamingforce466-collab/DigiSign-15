@@ -1,13 +1,22 @@
-storage/keys/*
-storage/documents/*
-storage/signatures/*
-!storage/keys/.gitkeep
-!storage/documents/.gitkeep
-!storage/signatures/.gitkeep
+# Local secrets; keep the example templates trackable.
 .env
-.streamlit/secrets.toml
-venv/
-env/
+.env.*
+!.env.example
+/.streamlit/secrets.toml
+!/.streamlit/secrets.toml.example
+
+# Runtime documents and cryptographic keys.
+/storage/keys/*
+/storage/documents/*
+/storage/signatures/*
+!/storage/keys/.gitkeep
+!/storage/documents/.gitkeep
+!/storage/signatures/.gitkeep
+
+# Local Python environments and generated files.
+/venv/
+/.venv/
+/env/
 __pycache__/
 *.pyc
 .pytest_cache/

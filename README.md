@@ -1,18 +1,5 @@
 Aplikasi web tanda tangan digital untuk PDF, Word `.docx`, JPG/JPEG, PNG, TXT, dan Excel `.xlsx`. Berkas di-hash dengan SHA-256, ditandatangani RSA-2048-PSS, lalu diverifikasi. QR-Code dipasang pada PDF, DOCX, gambar, dan XLSX; TXT menyimpan metadata verifikasi terstruktur sebagai teks.
 
-
-### Anggota Kelompok
-
-| No. | Nama Lengkap | NPM |
-| :-: | :--- | :-: |
-| 1 | Raffa Erlangga | 247006111145 |
-| 2 | Rossyada Adly | 247006111169 |
-| 3 | Rozan Aqila Daris | 247006111127 |
-
-
-
-
-
 Proyek Topik D: Aplikasi Digital Signature.
 
 ## Daftar Isi
@@ -121,12 +108,12 @@ Ganti `USERNAME/NAMA-REPO` dengan alamat repositori Anda. Jika proyek diterima d
 
 Berkas `.env` (salinan dari `.env.example`) berisi:
 
-| Variabel            | Nilai bawaan                   | Keterangan                                                                                                         |
-| ------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `FLASK_SECRET_KEY`  | `dev_fallback_secret_key`      | Kunci sesi Flask. Ganti dengan string acak panjang                                                                 |
-| `VERIFY_BASE_URL`   | `http://localhost:5000/verify` | Alamat yang ditulis di QR-Code sebagai tautan verifikasi                                                           |
-| `ENABLE_TEST_TOOLS` | `1`                            | Flask: `1` menampilkan tombol Isi acak, `0` menyembunyikannya. Streamlit default-nya `0` dan diatur lewat Secrets. |
-| `FLASK_DEBUG`       | `0`                            | `1` untuk mode debug saat pengembangan                                                                             |
+| Variabel            | Nilai bawaan                   | Keterangan                                                                      |
+| ------------------- | ------------------------------ | ------------------------------------------------------------------------------- |
+| `FLASK_SECRET_KEY`  | `dev_fallback_secret_key`      | Kunci sesi Flask. Ganti dengan string acak panjang                              |
+| `VERIFY_BASE_URL`   | `http://localhost:5000/verify` | Alamat yang ditulis di QR-Code sebagai tautan verifikasi                        |
+| `ENABLE_TEST_TOOLS` | `1`                            | Khusus antarmuka Flask: `1` menampilkan tombol Isi acak, `0` menyembunyikannya. |
+| `FLASK_DEBUG`       | `0`                            | `1` untuk mode debug saat pengembangan                                          |
 
 Membuat `FLASK_SECRET_KEY` acak:
 
@@ -160,18 +147,16 @@ Buat konfigurasi lokal sebelum membuka Streamlit:
 cp .streamlit/secrets.toml.example .streamlit/secrets.toml
 ```
 
-Di Windows PowerShell, gunakan `Copy-Item .streamlit/secrets.toml.example .streamlit/secrets.toml`. Ganti password contoh dengan password acak minimal 16 karakter. File `secrets.toml` lokal diabaikan Git. File contoh mengaktifkan fitur Isi acak dan Bersihkan data untuk demo; matikan keduanya saat aplikasi dibuka ke publik.
+Di Windows PowerShell, gunakan `Copy-Item .streamlit/secrets.toml.example .streamlit/secrets.toml`. Isi password minimal 8 karakter. File `secrets.toml` lokal diabaikan Git. Semua pengguna yang berhasil login dapat memakai fitur Isi acak dan Bersihkan data; gunakan aplikasi untuk demo/pengujian saja.
 
 Untuk Streamlit Community Cloud, pilih `streamlit_app.py` sebagai **Main file path**, lalu isi **Settings > Secrets**:
 
 ```toml
-STREAMLIT_ACCESS_PASSWORD = "password-acak-minimal-16-karakter"
+STREAMLIT_ACCESS_PASSWORD = "password-minimal-8-karakter"
 STREAMLIT_VERIFY_BASE_URL = "https://nama-aplikasi.streamlit.app"
-ENABLE_TEST_TOOLS = "0"
-ENABLE_DATA_RESET = "0"
 ```
 
-Password diperlukan untuk membuka aplikasi. Tautan QR dokumen baru menggunakan `STREAMLIT_VERIFY_BASE_URL`. `DIGISIGN_DATA_DIR` dapat diarahkan ke volume persisten pada host yang mendukungnya; disk lokal Streamlit Community Cloud tidak persisten, jadi dokumen dan kunci di sana hanya cocok untuk demo sementara. Jangan simpan password, kunci, atau data dokumen ke Git.
+Password diperlukan untuk membuka aplikasi. Setelah login, semua fitur termasuk data acak dan hapus penyimpanan tersedia. `digisign` bisa dipakai untuk demo, tetapi mudah ditebak sehingga jangan gunakan untuk aplikasi publik atau dokumen sensitif. Tautan QR dokumen baru menggunakan `STREAMLIT_VERIFY_BASE_URL`. `DIGISIGN_DATA_DIR` dapat diarahkan ke volume persisten pada host yang mendukungnya; disk lokal Streamlit Community Cloud tidak persisten, jadi dokumen dan kunci di sana hanya cocok untuk demo sementara. Jangan simpan password, kunci, atau data dokumen ke Git.
 
 Agar dapat diakses dari perangkat lain di jaringan yang sama:
 
@@ -200,7 +185,7 @@ Passphrase tidak disimpan. Jika hilang, kunci tidak bisa dipakai lagi.
 3. Klik **Tandatangani**.
 4. Klik **Unduh**. Berkas hasil tetap memakai format asal. TXT menyertakan metadata teks; format lain menyertakan QR-Code.
 
-Tombol **Isi acak** (jika `ENABLE_TEST_TOOLS=1`) mengisi nama kunci, passphrase, dan data penandatangan dengan nilai acak. Berkas dokumen tetap dipilih manual.
+Pada antarmuka Flask, tombol **Isi acak** (jika `ENABLE_TEST_TOOLS=1`) mengisi nama kunci, passphrase, dan data penandatangan dengan nilai acak. Di Streamlit, tombol ini tersedia untuk semua pengguna yang berhasil login. Berkas dokumen tetap dipilih manual.
 
 ### 3. Menambah penandatangan
 

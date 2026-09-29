@@ -46,11 +46,6 @@ flask_app.VERIFY_BASE_URL = (
 ACCESS_PASSWORD = str(_setting("STREAMLIT_ACCESS_PASSWORD", "")).strip()
 
 
-def _enabled(name, default=False):
-    value = _setting(name, "1" if default else "0")
-    return str(value).strip().lower() in {"1", "true", "yes", "on"}
-
-
 def _require_access():
     if len(ACCESS_PASSWORD) < 8:
         st.title("DigiSign")
@@ -122,25 +117,24 @@ def _render_home():
     else:
         st.info("Belum ada pasangan kunci.")
 
-    if _enabled("ENABLE_DATA_RESET"):
-        st.divider()
-        st.subheader("Bersihkan penyimpanan")
-        st.warning("Tindakan ini menghapus semua kunci, dokumen, dan data tanda tangan.")
-        confirmed = st.checkbox("Saya memahami bahwa data yang dihapus tidak dapat dipulihkan.")
-        if st.button("Bersihkan semua data", type="secondary", disabled=not confirmed):
-            counts = maintenance_service.clear_storage(
-                flask_app.DOCUMENTS_DIR, flask_app.SIGNATURES_DIR, key_module.KEYS_DIR
-            )
-            st.success(
-                f"Dihapus: {counts['documents']} berkas, {counts['signatures']} tanda tangan, "
-                f"{counts['keys']} kunci."
-            )
-            st.rerun()
+    st.divider()
+    st.subheader("Bersihkan penyimpanan")
+    st.warning("Tindakan ini menghapus semua kunci, dokumen, dan data tanda tangan.")
+    confirmed = st.checkbox("Saya memahami bahwa data yang dihapus tidak dapat dipulihkan.")
+    if st.button("Bersihkan semua data", type="secondary", disabled=not confirmed):
+        counts = maintenance_service.clear_storage(
+            flask_app.DOCUMENTS_DIR, flask_app.SIGNATURES_DIR, key_module.KEYS_DIR
+        )
+        st.success(
+            f"Dihapus: {counts['documents']} berkas, {counts['signatures']} tanda tangan, "
+            f"{counts['keys']} kunci."
+        )
+        st.rerun()
 
 
 def _render_key_creation():
     st.subheader("Buat pasangan kunci")
-    if _enabled("ENABLE_TEST_TOOLS") and st.button("Isi data kunci acak", key="random_key_data"):
+    if st.button("Isi data kunci acak", key="random_key_data"):
         st.session_state["new_key_owner"] = randomdata.random_owner_id()
         st.session_state["new_key_passphrase"] = randomdata.random_passphrase()
 
@@ -173,7 +167,7 @@ def _render_signing():
     st.divider()
     st.subheader("Tandatangani dokumen")
 
-    if _enabled("ENABLE_TEST_TOOLS") and st.button("Isi data penandatangan acak"):
+    if st.button("Isi data penandatangan acak"):
         values = randomdata.random_signer()
         st.session_state["signer_name"] = values["signer_name"]
         st.session_state["signer_position"] = values["position"]
@@ -241,7 +235,6 @@ def _render_signing():
                 st.error(f"Penandatanganan gagal: {exc}")
             else:
                 st.session_state["last_signed_doc_id"] = new_doc_id
-                st.session_state["sign_doc_id"] = new_doc_id
                 st.success(f"Dokumen `{new_doc_id}` berhasil ditandatangani.")
                 st.rerun()
 
