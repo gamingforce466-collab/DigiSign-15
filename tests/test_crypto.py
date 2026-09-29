@@ -2,10 +2,13 @@ import sys
 import os
 import time
 import statistics
+<<<<<<< HEAD
 import hashlib
 
 import pytest
 from cryptography.hazmat.primitives import serialization
+=======
+>>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -76,6 +79,7 @@ def test_average_sign_verify_time(tmp_path):
     print(f"Rata-rata waktu verifikasi ({trials}x): {avg_verify * 1000:.4f} ms")
     assert avg_sign > 0
     assert avg_verify > 0
+<<<<<<< HEAD
 
 
 # ---------------------------------------------------------------------------
@@ -155,3 +159,5 @@ def test_benchmark_30_trials_stats_and_sizes():
     assert all(r["status"] == "TAMPERED" and not r["signature_valid"] for r in tamper["rows"])
     with pytest.raises(ValueError):
         benchmark.run_benchmark(10)
+=======
+>>>>>>> e5f9e3f2d4901c926d7e0edf40d3f99ca6aad194
