@@ -1,4 +1,5 @@
 Flask>=3.0
+streamlit>=1.39
 python-dotenv>=1.0
 cryptography>=42.0
 pypdf>=4.0

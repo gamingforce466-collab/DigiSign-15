@@ -5,6 +5,7 @@ storage/signatures/*
 !storage/documents/.gitkeep
 !storage/signatures/.gitkeep
 .env
+.streamlit/secrets.toml
 venv/
 env/
 __pycache__/

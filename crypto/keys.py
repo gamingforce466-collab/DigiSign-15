@@ -1,8 +1,11 @@
+import os
 from pathlib import Path
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 
-KEYS_DIR = Path(__file__).resolve().parent.parent / "storage" / "keys"
+DEFAULT_STORAGE_DIR = Path(__file__).resolve().parent.parent / "storage"
+STORAGE_DIR = Path(os.environ.get("DIGISIGN_DATA_DIR", DEFAULT_STORAGE_DIR)).expanduser().resolve()
+KEYS_DIR = STORAGE_DIR / "keys"
 KEYS_DIR.mkdir(parents=True, exist_ok=True)
 
 

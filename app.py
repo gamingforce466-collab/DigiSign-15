@@ -25,8 +25,9 @@ from services import scenarios as scenario_service
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
-DOCUMENTS_DIR = BASE_DIR / "storage" / "documents"
-SIGNATURES_DIR = BASE_DIR / "storage" / "signatures"
+STORAGE_DIR = Path(os.environ.get("DIGISIGN_DATA_DIR", BASE_DIR / "storage")).expanduser().resolve()
+DOCUMENTS_DIR = STORAGE_DIR / "documents"
+SIGNATURES_DIR = STORAGE_DIR / "signatures"
 KEYS_DIR = BASE_DIR / "storage" / "keys"
 for d in (DOCUMENTS_DIR, SIGNATURES_DIR, KEYS_DIR):
     d.mkdir(parents=True, exist_ok=True)
