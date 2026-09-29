@@ -259,6 +259,30 @@ def test_streamlit_add_signer_button_navigates_to_selected_document(demo_storage
     assert any(message.value.startswith("VALID:") for message in verification.success)
 
 
+def test_successful_signing_shows_actions_clears_form_and_verifies_stored_file(demo_storage):
+    app = _logged_in_app()
+    app.radio(key="page").set_value("Tanda Tangan").run()
+    app.text_input(key="signing_owner_id").set_value(OWNER_A).run()
+    app.text_input(key="signing_passphrase").set_value(PASS_A)
+    app.text_input(key="signer_name").set_value("Penandatangan UI")
+    app.file_uploader[0].upload("alur-mulus.pdf", _sample_document(".pdf"), MIME_TYPES[".pdf"]).run()
+    app.button(key="FormSubmitter:sign_document_form-Tandatangani").click().run(timeout=60)
+
+    assert not app.exception, app.exception
+    doc_id = app.session_state["last_signed_doc_id"]
+    assert app.text_input(key="signing_passphrase").value == ""
+    assert app.text_input(key="signer_name").value == ""
+    assert app.file_uploader[0].value is None
+    assert any(button.label == "Unduh dokumen bertanda tangan" for button in app.download_button)
+    assert any(button.label == "Verifikasi hasil tersimpan" for button in app.button)
+    assert any(button.label == "Tambah penandatangan" for button in app.button)
+
+    app.button(key=f"verify_result_{doc_id}").click().run(timeout=60)
+    assert not app.exception, app.exception
+    assert app.radio(key="page").value == "Verifikasi"
+    assert app.session_state["last_verification"]["status"] == "VALID"
+
+
 def test_streamlit_demo_controls_and_benchmark_render(demo_storage):
     app = _logged_in_app()
     assert any(button.label == "Bersihkan semua data" for button in app.button)

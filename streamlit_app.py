@@ -184,6 +184,28 @@ def _open_signing_page(doc_id):
     st.session_state["sign_doc_id"] = doc_id
     st.session_state["page"] = "Tanda Tangan"
 
+def _verify_stored_document(doc_id):
+    record = flask_app.load_signature_record(doc_id)
+    if record is None:
+        st.session_state["last_verification"] = {
+            "status": "NOT_FOUND",
+            "error": f"Doc ID {doc_id} tidak ditemukan.",
+        }
+    else:
+        extension = flask_app.record_file_extension(record)
+        signed_path = flask_app.DOCUMENTS_DIR / f"{doc_id}_signed{extension}"
+        if not signed_path.is_file():
+            st.session_state["last_verification"] = {
+                "status": "NOT_FOUND",
+                "error": "Berkas bertanda tangan tidak ditemukan di storage.",
+            }
+        else:
+            st.session_state["last_verification"] = flask_app.verify_pdf_bytes(
+                signed_path.read_bytes(), original_filename=signed_path.name
+            )
+    st.session_state["verify_doc_id"] = doc_id
+    st.session_state["page"] = "Verifikasi"
+
 
 def _render_key_creation():
     st.subheader("Buat pasangan kunci")
@@ -248,6 +270,11 @@ def _render_signing():
     st.divider()
     st.subheader("Tandatangani dokumen")
 
+    if st.session_state.pop("clear_sign_form_after_success", False):
+        for field in ("signing_passphrase", "signer_name", "signer_position", "signer_institution"):
+            st.session_state[field] = ""
+        st.session_state["signer_date"] = date.today()
+
     if st.button("Isi data penandatangan acak"):
         values = randomdata.random_signer()
         st.session_state["signer_name"] = values["signer_name"]
@@ -265,6 +292,7 @@ def _render_signing():
     else:
         st.caption("Belum ada kunci. Buat pasangan kunci terlebih dahulu.")
 
+    upload_key = f"signing_document_upload_{st.session_state.get('signing_upload_epoch', 0)}"
     record_by_id = {record["doc_id"]: record for record in records}
     selected_doc_id = st.session_state.get("sign_doc_id", "")
     if selected_doc_id and selected_doc_id not in record_by_id:
@@ -297,6 +325,7 @@ def _render_signing():
             "Dokumen (PDF, DOCX, JPG/JPEG, PNG, TXT, XLSX)",
             type=ALLOWED_EXTENSIONS,
             help="Berkas sumber maksimal 30 MiB. Saat menambah penandatangan, unggah ulang bersifat opsional.",
+            key=upload_key,
         )
         submitted = st.form_submit_button("Tandatangani", type="primary")
 
@@ -312,24 +341,26 @@ def _render_signing():
             st.error("Ukuran berkas maksimal 64 MiB.")
         else:
             try:
-                new_doc_id, record = flask_app.perform_signing(
-                    owner_id,
-                    passphrase,
-                    signer_name.strip(),
-                    position.strip(),
-                    institution.strip(),
-                    signed_date.isoformat(),
-                    doc_id=doc_id,
-                    pdf_bytes=data,
-                    original_filename=uploaded.name if uploaded else None,
-                )
+                with st.spinner("Menandatangani dan menyimpan dokumen..."):
+                    new_doc_id, record = flask_app.perform_signing(
+                        owner_id,
+                        passphrase,
+                        signer_name.strip(),
+                        position.strip(),
+                        institution.strip(),
+                        signed_date.isoformat(),
+                        doc_id=doc_id,
+                        pdf_bytes=data,
+                        original_filename=uploaded.name if uploaded else None,
+                    )
             except (flask_app.SigningError, ValueError) as exc:
                 st.error(str(exc))
             except Exception as exc:
                 st.error(f"Penandatanganan gagal: {exc}")
             else:
                 st.session_state["last_signed_doc_id"] = new_doc_id
-                st.success(f"Dokumen `{new_doc_id}` berhasil ditandatangani.")
+                st.session_state["clear_sign_form_after_success"] = True
+                st.session_state["signing_upload_epoch"] = st.session_state.get("signing_upload_epoch", 0) + 1
                 st.rerun()
 
     result_doc_id = st.session_state.get("last_signed_doc_id")
@@ -337,6 +368,7 @@ def _render_signing():
         record = flask_app.load_signature_record(result_doc_id)
         if record:
             st.subheader("Hasil terakhir")
+            st.success(f"Tanda tangan berhasil disimpan untuk `{result_doc_id}`.")
             st.caption(f"Doc ID: `{result_doc_id}` · {len(record['signers'])} tanda tangan")
             st.dataframe(
                 [
@@ -355,12 +387,28 @@ def _render_signing():
             extension = flask_app.record_file_extension(record)
             signed_path = flask_app.DOCUMENTS_DIR / f"{result_doc_id}_signed{extension}"
             if signed_path.is_file():
-                st.download_button(
+                download, verify, add_signer = st.columns(3)
+                download.download_button(
                     "Unduh dokumen bertanda tangan",
                     data=signed_path.read_bytes(),
                     file_name=signed_path.name,
                     mime=document_formats.MIME_TYPES[extension],
                     key=f"download_result_{result_doc_id}",
+                    use_container_width=True,
+                )
+                verify.button(
+                    "Verifikasi hasil tersimpan",
+                    key=f"verify_result_{result_doc_id}",
+                    on_click=_verify_stored_document,
+                    args=(result_doc_id,),
+                    use_container_width=True,
+                )
+                add_signer.button(
+                    "Tambah penandatangan",
+                    key=f"add_signer_result_{result_doc_id}",
+                    on_click=_open_signing_page,
+                    args=(result_doc_id,),
+                    use_container_width=True,
                 )
 
 
