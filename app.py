@@ -1,5 +1,4 @@
 import os
-<<<<<<< HEAD
 import re
 import json
 import uuid
@@ -12,7 +11,7 @@ from flask import (
     Flask, render_template, request, redirect, url_for,
     send_from_directory, send_file, flash, jsonify, abort
 )
-=======
+
 import json
 import uuid
 import base64
