@@ -1,0 +1,1 @@
+"""Handler workbook Excel XLSX."""

@@ -1,0 +1,1 @@
+"""Handler gambar JPG/JPEG dan PNG."""

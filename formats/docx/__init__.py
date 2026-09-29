@@ -1,0 +1,1 @@
+"""Handler dokumen Word DOCX."""

@@ -126,7 +126,7 @@ def test_sample_pdf_option_is_gone(client):
     resp = c.post("/sign", data={"doc_id": "", "owner_id": OWNER_A, "passphrase": PASS_A,
                                  "signer_name": "Budi", "use_sample_pdf": "1"},
                   content_type="multipart/form-data", follow_redirects=True)
-    assert "Unggah berkas PDF" in resp.get_data(as_text=True)
+    assert "Pilih berkas yang akan ditandatangani" in resp.get_data(as_text=True)
     assert list(sigs.glob("*.json")) == []
 
 

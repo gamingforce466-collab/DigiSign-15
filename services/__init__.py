@@ -1,0 +1,1 @@
+"""Layanan aplikasi yang dipakai oleh route Flask."""

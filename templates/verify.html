@@ -1,34 +1,31 @@
-{% extends "base.html" %}
-{% block title %}Verifikasi{% endblock %}
-{% block width %}max-w-3xl{% endblock %}
-{% block content %}
+{% extends "base.html" %} {% block title %}Verifikasi{% endblock %} {% block width %}max-w-3xl{% endblock %} {% block content %}
 <div class="bg-white rounded-xl shadow p-6">
-<div class="flex items-center justify-between mb-1">
-<h2 class="text-lg font-semibold text-slate-800">Verifikasi</h2>
-</div>
-<p class="text-sm text-slate-500 mb-4">Unggah PDF bertanda tangan. Doc ID dibaca otomatis dari QR-Code.</p>
-<form method="POST" enctype="multipart/form-data" class="space-y-3">
-<div>
-<label class="block text-sm text-slate-600 mb-1">Berkas PDF</label>
-<input type="file" name="document" accept="application/pdf" required class="w-full border rounded px-3 py-2">
-</div>
-<div>
-<label class="block text-sm text-slate-600 mb-1">Doc ID (opsional)</label>
-<input type="text" name="doc_id" value="{{ prefill_doc_id or '' }}" placeholder="Isi jika QR-Code tidak terbaca" class="w-full border rounded px-3 py-2">
-</div>
-<div>
-<label class="block text-sm text-slate-600 mb-1">Kunci publik pembanding (opsional, .pem)</label>
-<input type="file" name="override_public_key" accept=".pem" class="w-full border rounded px-3 py-2">
-<p class="text-xs text-slate-400 mt-1">Untuk uji kunci salah: hasilnya harus KEY_MISMATCH.</p>
-</div>
-<button type="submit" class="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">Verifikasi</button>
-</form>
+  <div class="flex items-center justify-between mb-1">
+    <h2 class="text-lg font-semibold text-slate-800">Verifikasi</h2>
+  </div>
+  <p class="text-sm text-slate-500 mb-4">Unggah PDF, DOCX, JPG/JPEG, PNG, TXT, atau XLSX bertanda tangan. TXT memakai metadata teks; format lain dibaca dari QR-Code.</p>
+  <form method="POST" enctype="multipart/form-data" class="space-y-3">
+    <div>
+      <label class="block text-sm text-slate-600 mb-1">Berkas dokumen</label>
+      <input type="file" name="document" accept=".pdf,.docx,.jpg,.jpeg,.png,.txt,.xlsx" required class="w-full border rounded px-3 py-2" />
+      <p class="text-xs text-slate-500 mt-1">Batas request 64 MiB agar hasil bertanda tangan yang membesar tetap dapat diverifikasi.</p>
+    </div>
+    <div>
+      <label class="block text-sm text-slate-600 mb-1">Doc ID (opsional)</label>
+      <input type="text" name="doc_id" value="{{ prefill_doc_id or '' }}" placeholder="Isi jika QR-Code tidak terbaca" class="w-full border rounded px-3 py-2" />
+    </div>
+    <div>
+      <label class="block text-sm text-slate-600 mb-1">Kunci publik pembanding (opsional, .pem)</label>
+      <input type="file" name="override_public_key" accept=".pem" class="w-full border rounded px-3 py-2" />
+      <p class="text-xs text-slate-400 mt-1">Untuk uji kunci salah: hasilnya harus KEY_MISMATCH.</p>
+    </div>
+    <button type="submit" class="bg-sky-600 text-white px-4 py-2 rounded hover:bg-sky-700">Verifikasi</button>
+  </form>
 </div>
 
 {% if results %}
 <div class="bg-white rounded-xl shadow p-6 mt-6">
-<h2 class="text-lg font-semibold mb-3 text-slate-800">Hasil verifikasi</h2>
-{% include "_result.html" %}
+  <h2 class="text-lg font-semibold mb-3 text-slate-800">Hasil verifikasi</h2>
+  {% include "_result.html" %}
 </div>
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}

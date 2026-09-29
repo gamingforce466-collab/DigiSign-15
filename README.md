@@ -1,4 +1,4 @@
-Aplikasi web tanda tangan digital untuk dokumen PDF. Dokumen ditandatangani dengan RSA-2048 (skema PSS, SHA-256), disisipi QR-Code berisi metadata penandatangan, lalu keasliannya dapat diverifikasi. Contoh pemakaian: surat keterangan, sertifikat kegiatan, dan lembar pengesahan laporan.
+Aplikasi web tanda tangan digital untuk PDF, Word `.docx`, JPG/JPEG, PNG, TXT, dan Excel `.xlsx`. Berkas di-hash dengan SHA-256, ditandatangani RSA-2048-PSS, lalu diverifikasi. QR-Code dipasang pada PDF, DOCX, gambar, dan XLSX; TXT menyimpan metadata verifikasi terstruktur sebagai teks.
 
 Proyek Topik D: Aplikasi Digital Signature.
 
@@ -14,7 +14,7 @@ Proyek Topik D: Aplikasi Digital Signature.
 - [Menjalankan Aplikasi](#menjalankan-aplikasi)
 - [Cara Penggunaan](#cara-penggunaan)
   - [1. Membuat kunci](#1-membuat-kunci)
-  - [2. Menandatangani PDF](#2-menandatangani-pdf)
+  - [2. Menandatangani dokumen](#2-menandatangani-dokumen)
   - [3. Menambah penandatangan](#3-menambah-penandatangan)
   - [4. Verifikasi](#4-verifikasi)
   - [5. Mengulang pengujian dari awal](#5-mengulang-pengujian-dari-awal)
@@ -25,6 +25,8 @@ Proyek Topik D: Aplikasi Digital Signature.
 - [Skenario Demo](#skenario-demo)
 - [Keamanan](#keamanan)
 - [Struktur Proyek](#struktur-proyek)
+  - [Alur Kode](#alur-kode)
+  - [Perubahan Struktur](#perubahan-struktur)
 - [Rute Aplikasi](#rute-aplikasi)
 - [Batasan](#batasan)
 
@@ -34,7 +36,8 @@ Proyek Topik D: Aplikasi Digital Signature.
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
 | Pasangan kunci     | RSA 2048-bit, eksponen publik 65537                                                                                    |
 | Skema tanda tangan | RSA-PSS dengan MGF1-SHA256                                                                                             |
-| Hash dokumen       | SHA-256 atas seluruh byte berkas PDF                                                                                   |
+| Format dokumen     | PDF, Word `.docx`, JPG/JPEG, PNG, TXT, dan Excel `.xlsx`                                                               |
+| Hash dokumen       | SHA-256 atas seluruh byte berkas yang diunggah                                                                         |
 | Kunci privat       | Disimpan terenkripsi (PKCS8 PEM dengan passphrase), tidak ada di kode sumber                                           |
 | QR-Code            | Memuat nama, jabatan, institusi, tanggal, hash dokumen, ID dokumen, dan tautan verifikasi                              |
 | Verifikasi         | Menolak dokumen yang diubah, kunci publik yang salah, dan QR-Code palsu                                                |
@@ -48,23 +51,25 @@ Bilangan acak (kunci, salt, passphrase uji, ID dokumen) dibangkitkan dengan `sec
 ## Kebutuhan Sistem
 
 - Python 3.10 sampai 3.13
+- Berkas sumber maksimal 30 MiB; request verifikasi maksimal 64 MiB
 - pip
 - Windows, Linux, atau macOS
 - Koneksi internet saat pertama kali membuka aplikasi (gaya tampilan Tailwind CSS dimuat dari CDN)
 
 Semua pustaka Python tercantum di `requirements.txt`:
 
-| Paket                         | Fungsi                                      |
-| ----------------------------- | ------------------------------------------- |
-| Flask, Werkzeug, Jinja2       | Web server dan template                     |
-| python-dotenv                 | Membaca berkas `.env`                       |
-| cryptography                  | RSA, PSS, SHA-256, enkripsi kunci privat    |
-| pypdf                         | Membaca dan menulis PDF                     |
-| reportlab                     | Menggambar blok tanda tangan dan PDF contoh |
-| qrcode, Pillow                | Membuat gambar QR-Code                      |
-| opencv-python-headless, numpy | Membaca QR-Code dari gambar dalam PDF       |
-| openpyxl                      | Membuat berkas Excel                        |
-| pytest                        | Pengujian otomatis                          |
+| Paket                         | Fungsi                                          |
+| ----------------------------- | ----------------------------------------------- |
+| Flask, Werkzeug, Jinja2       | Web server dan template                         |
+| python-dotenv                 | Membaca berkas `.env`                           |
+| cryptography                  | RSA, PSS, SHA-256, enkripsi kunci privat        |
+| pypdf                         | Membaca dan menulis PDF                         |
+| reportlab                     | Menggambar blok tanda tangan dan PDF contoh     |
+| python-docx                   | Menyisipkan blok tanda tangan pada Word `.docx` |
+| qrcode, Pillow                | Membuat gambar QR-Code                          |
+| opencv-python-headless, numpy | Membaca QR-Code dari PDF dan gambar             |
+| openpyxl                      | Membuat berkas Excel                            |
+| pytest                        | Pengujian otomatis                              |
 
 ## Instalasi
 
@@ -76,7 +81,6 @@ venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 copy .env.example .env
-
 ```
 
 Jika muncul galat `running scripts is disabled`, jalankan sekali:
@@ -95,7 +99,6 @@ source venv/bin/activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 cp .env.example .env
-
 ```
 
 Ganti `USERNAME/NAMA-REPO` dengan alamat repositori Anda. Jika proyek diterima dalam bentuk ZIP, ekstrak lalu mulai dari perintah `cd`.
@@ -149,28 +152,28 @@ Menu: **Beranda**, **Tanda Tangan**, **Verifikasi**, **Uji Kuantitatif**.
 
 Passphrase tidak disimpan. Jika hilang, kunci tidak bisa dipakai lagi.
 
-### 2. Menandatangani PDF
+### 2. Menandatangani dokumen
 
-1. Pada bagian _Tandatangani PDF_, biarkan pilihan **Dokumen baru**, lalu pilih berkas PDF.
+1. Pada bagian _Tandatangani dokumen_, biarkan pilihan **Dokumen baru**, lalu pilih PDF, Word `.docx`, JPG/JPEG, PNG, TXT, atau Excel `.xlsx` (maksimal 30 MiB).
 2. Pilih kunci, isi passphrase, nama, jabatan, institusi, dan tanggal.
 3. Klik **Tandatangani**.
-4. Klik **Unduh PDF**. Berkas yang diunduh memuat blok "TANDA TANGAN DIGITAL #1" berisi QR-Code.
+4. Klik **Unduh**. Berkas hasil tetap memakai format asal. TXT menyertakan metadata teks; format lain menyertakan QR-Code.
 
-Tombol **Isi acak** (jika `ENABLE_TEST_TOOLS=1`) mengisi nama kunci, passphrase, dan data penandatangan dengan nilai acak. Berkas PDF tetap dipilih manual.
+Tombol **Isi acak** (jika `ENABLE_TEST_TOOLS=1`) mengisi nama kunci, passphrase, dan data penandatangan dengan nilai acak. Berkas dokumen tetap dipilih manual.
 
 ### 3. Menambah penandatangan
 
 1. Buka **Tanda Tangan**.
 2. Pada kolom **Dokumen**, pilih `Tambah TTD: <Doc ID> ...`. Alternatif: klik **Tambah TTD** pada baris dokumen di Beranda.
 3. Pilih kunci lain, isi passphrase dan data penandatangan, lalu klik **Tandatangani**.
-4. Unduh PDF **setelah tanda tangan terakhir**. Hanya berkas terbaru yang memuat semua blok tanda tangan.
+4. Unduh dokumen **setelah tanda tangan terakhir**. Hanya berkas terbaru yang memuat semua blok tanda tangan.
 
-Mengunggah ulang PDF hasil tanda tangan dengan pilihan _Dokumen baru_ akan membuat dokumen terpisah dengan Doc ID baru.
+Mengunggah ulang hasil tanda tangan dengan pilihan _Dokumen baru_ akan membuat dokumen terpisah dengan Doc ID baru.
 
 ### 4. Verifikasi
 
 1. Buka **Verifikasi**.
-2. Unggah PDF bertanda tangan. Doc ID dibaca otomatis dari QR-Code, kolom Doc ID boleh kosong.
+2. Unggah dokumen bertanda tangan (PDF, DOCX, JPG/JPEG, PNG, TXT, atau XLSX). Doc ID dibaca dari QR-Code, atau dari metadata teks untuk TXT. Request verifikasi menerima hasil hingga 64 MiB.
 3. Klik **Verifikasi**. Hasil berupa status, kondisi isi dokumen, jumlah QR-Code terbaca, dan tabel penandatangan.
 
 Opsi tambahan:
@@ -203,16 +206,17 @@ PDF versi lama (misalnya hanya memuat 1 dari 2 blok tanda tangan) tetap `VALID` 
 pytest tests/ -v -s
 ```
 
-Total 50 tes. Opsi `-s` menampilkan angka waktu dan ukuran di terminal.
+Total 65 tes. Opsi `-s` menampilkan angka waktu dan ukuran di terminal.
 
-| Berkas                     | Jumlah | Isi                                                                                                                                |
-| -------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/test_crypto.py`     | 10     | Pembuatan kunci terenkripsi, hash SHA-256, sign, verify, tamper, tanda tangan rusak, waktu 30 percobaan, ukuran, benchmark         |
-| `tests/test_tamper.py`     | 6      | Ubah 1 byte di berbagai posisi, kunci publik salah                                                                                 |
-| `tests/test_qr.py`         | 4      | Pembuatan dan pembacaan QR-Code, metadata palsu                                                                                    |
-| `tests/test_status.py`     | 16     | Status VALID, TAMPERED, KEY_MISMATCH, QR_FORGED, NOT_FOUND, NO_QR, tiga penandatangan, halaman Verifikasi, Excel, tombol Bersihkan |
-| `tests/test_flow.py`       | 3      | Alur tanda tangan dan verifikasi lewat web                                                                                         |
-| `tests/test_enrichment.py` | 11     | Beberapa penandatangan, blok tanda tangan PDF, Isi acak                                                                            |
+| Berkas                           | Jumlah | Isi                                                                                                                                |
+| -------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `tests/test_crypto.py`           | 10     | Pembuatan kunci terenkripsi, hash SHA-256, sign, verify, tamper, tanda tangan rusak, waktu 30 percobaan, ukuran, benchmark         |
+| `tests/test_tamper.py`           | 6      | Ubah 1 byte di berbagai posisi, kunci publik salah                                                                                 |
+| `tests/test_qr.py`               | 4      | Pembuatan dan pembacaan QR-Code, metadata palsu                                                                                    |
+| `tests/test_status.py`           | 16     | Status VALID, TAMPERED, KEY_MISMATCH, QR_FORGED, NOT_FOUND, NO_QR, tiga penandatangan, halaman Verifikasi, Excel, tombol Bersihkan |
+| `tests/test_flow.py`             | 10     | Alur web PDF dan format DOCX/JPG/JPEG/PNG/TXT/XLSX, tamper, dan batas upload 30 MiB                                                |
+| `tests/test_enrichment.py`       | 11     | Beberapa penandatangan, blok tanda tangan PDF, Isi acak                                                                            |
+| `tests/test_document_formats.py` | 8      | Validasi serta penyisipan/ekstraksi QR PDF, DOCX, JPG/JPEG, PNG, TXT, dan XLSX                                                     |
 
 Menjalankan satu berkas atau satu tes:
 
@@ -261,8 +265,8 @@ python -m crypto.benchmark 100
 
 - Kunci privat disimpan terenkripsi dengan passphrase pengguna (PKCS8 PEM). Tidak ada kunci atau kata sandi di kode sumber.
 - Nama kunci divalidasi dengan pola `[A-Za-z0-9_-]{1,40}` untuk mencegah path traversal.
-- Tanda tangan dibuat atas hash SHA-256 seluruh berkas PDF. Perubahan satu byte mengubah hash sehingga verifikasi gagal.
-- Data QR-Code dicocokkan dengan catatan tanda tangan di server (Doc ID, penandatangan, nama, tanggal, hash), sehingga QR-Code buatan sendiri ditolak.
+- Tanda tangan dibuat atas hash SHA-256 seluruh byte berkas. Perubahan satu byte mengubah hash sehingga verifikasi gagal.
+- Metadata QR (atau blok metadata pada TXT) dicocokkan dengan catatan tanda tangan di server (Doc ID, penandatangan, nama, tanggal, hash), sehingga metadata palsu ditolak.
 - Berkas berikut tidak boleh diunggah ke GitHub. Semuanya sudah ada di `.gitignore`:
 
 ```
@@ -287,10 +291,22 @@ git push
 ## Struktur Proyek
 
 ```
-app.py                  rute web, alur tanda tangan dan verifikasi
-randomdata.py           data acak untuk tombol Isi acak dan pengujian
-requirements.txt        daftar pustaka Python
-.env.example            contoh konfigurasi
+app.py                  konfigurasi Flask, route, dan penghubung service
+document_formats.py     façade kompatibilitas menuju dispatcher format
+randomdata.py           data contoh untuk tombol Isi acak dan tes
+requirements.txt        dependensi langsung aplikasi dan tes
+.env.example            template konfigurasi
+services/
+  document_workflow.py record, signing, integritas, dan verifikasi
+  maintenance.py       operasi pembersihan storage
+  scenarios.py         helper tamper dan pemalsuan QR untuk tes
+formats/
+  __init__.py          pemetaan ekstensi dan dispatcher format
+  common.py            utilitas OOXML dan gambar bersama
+  docx/handler.py      validasi, penyisipan QR, dan ekstraksi Word
+  image/handler.py     validasi, penyisipan QR, dan ekstraksi JPG/PNG
+  txt/handler.py       metadata verifikasi teks untuk TXT
+  xlsx/handler.py      validasi, sheet DigiSign, dan ekstraksi QR Excel
 crypto/
     keys.py             pembuatan, penyimpanan, dan pemuatan kunci
     signer.py           tanda tangan RSA-PSS atas hash SHA-256
@@ -298,17 +314,39 @@ crypto/
     benchmark.py        waktu, ukuran, dan uji tamper
     excel_exporter.py   ekspor laporan pengujian ke Excel
 pdf/
-    handler.py          hash PDF, blok tanda tangan, penyisipan QR-Code
+    handler.py          hash, blok tanda tangan, dan ekstraksi gambar PDF
 qr/
     generator.py        pembuatan dan pembacaan QR-Code
-templates/              halaman HTML (Jinja2 dan Tailwind CSS)
-static/                 CSS dan JavaScript
+  templates/              halaman HTML Jinja2
+  static/                 CSS dan JavaScript browser
 storage/
     keys/               kunci (tidak di-commit)
-    documents/          PDF asli dan bertanda tangan (tidak di-commit)
+    documents/          berkas asli dan bertanda tangan (tidak di-commit)
     signatures/         catatan tanda tangan JSON (tidak di-commit)
-tests/                  unit test
+  tests/                  tes unit, alur web, format, dan serangan
 ```
+
+### Alur Kode
+
+Route pada `app.py` menerima form dan meneruskan pekerjaan ke `services/document_workflow.py`. Service ini menangani record, hash, signing RSA-PSS, dan verifikasi. Untuk validasi, penyisipan, dan pembacaan metadata, service memanggil `document_formats.py`; façade itu meneruskan ke handler khusus di `formats/`, sementara PDF tetap menggunakan `pdf/handler.py`.
+
+Saat verifikasi, handler format membaca QR atau metadata TXT, service membandingkan hash seluruh berkas dengan hash yang tercatat, mencocokkan metadata penandatangan, lalu memeriksa tanda tangan dengan kunci publik. Route hanya mengubah hasil service menjadi halaman atau respons unduhan.
+
+Perilaku format:
+
+- PDF: blok QR ditambahkan pada halaman terakhir.
+- DOCX: blok tanda tangan dan QR ditambahkan ke dokumen; isi Word asli dipertahankan.
+- JPG/JPEG/PNG: gambar asli dipertahankan dan blok QR ditambahkan di bawahnya.
+- XLSX: sheet asli dipertahankan dan sheet `DigiSign` berisi identitas serta QR ditambahkan.
+- TXT: metadata JSON ditambahkan sebagai blok teks bertanda batas. TXT dapat diverifikasi aplikasi, tetapi tidak memiliki QR gambar untuk dipindai kamera.
+
+### Perubahan Struktur
+
+- Logika record, signing, dan verifikasi dipisah dari `app.py` ke `services/document_workflow.py`; fungsi façade lama tetap tersedia agar route dan tes kompatibel.
+- Pembersihan storage dan helper skenario uji berada di `services/maintenance.py` dan `services/scenarios.py`.
+- Setiap format non-PDF memiliki handler sendiri; PDF tetap berada di `pdf/handler.py`.
+- `document_formats.py` hanya mempertahankan API lama dan meneruskan operasi ke dispatcher format.
+- Ukuran berkas sumber dibatasi 30 MiB dan request verifikasi 64 MiB.
 
 ## Rute Aplikasi
 
@@ -317,8 +355,8 @@ tests/                  unit test
 | `/`                  | GET       | Beranda, daftar kunci dan dokumen                       |
 | `/sign`              | GET, POST | Halaman dan proses tanda tangan                         |
 | `/generate_keys`     | POST      | Membuat pasangan kunci                                  |
-| `/download/<doc_id>` | GET       | Mengunduh PDF bertanda tangan                           |
-| `/preview/<doc_id>`  | GET       | Membuka PDF di tab baru                                 |
+| `/download/<doc_id>` | GET       | Mengunduh dokumen bertanda tangan dalam format asal     |
+| `/preview/<doc_id>`  | GET       | Membuka PDF bertanda tangan di tab baru                 |
 | `/verify`            | GET, POST | Halaman dan proses verifikasi                           |
 | `/benchmark`         | GET, POST | Uji kuantitatif dan benchmark                           |
 | `/benchmark/xlsx`    | GET       | Unduh rekapitulasi Excel                                |
@@ -330,6 +368,6 @@ tests/                  unit test
 
 - Skema tanda tangan yang dipakai hanya RSA-2048-PSS. ECDSA P-256 hanya pembanding di benchmark.
 - Tanda tangan ganda klasik dan pasca-kuantum (ECDSA + ML-DSA) dan penyimpanan hash pada blockchain uji belum tersedia. Pengayaan yang diambil adalah beberapa penandatangan pada satu dokumen.
-- Tautan verifikasi di QR-Code membuka halaman Verifikasi dengan Doc ID terisi. Pengguna tetap mengunggah PDF untuk memeriksa keutuhan dokumen.
+- Tautan verifikasi di QR-Code membuka halaman Verifikasi dengan Doc ID terisi. Pengguna tetap mengunggah dokumen bertanda tangan untuk memeriksa keutuhannya.
 - Data disimpan sebagai berkas lokal di folder `storage/`, tanpa basis data dan tanpa akun pengguna.
 - Server bawaan Flask tidak untuk produksi.

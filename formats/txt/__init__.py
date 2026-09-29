@@ -1,0 +1,1 @@
+"""Handler teks biasa dengan metadata tanda tangan yang dapat diverifikasi."""

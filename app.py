@@ -1,9 +1,5 @@
 import os
 import re
-import json
-import uuid
-import base64
-import secrets
 from io import BytesIO
 from pathlib import Path
 from datetime import datetime, timezone
@@ -20,7 +16,11 @@ from crypto import benchmark as benchmark_module
 from crypto import excel_exporter as excel_module
 from pdf import handler as pdf_module
 from qr import generator as qr_module
+import document_formats as document_module
 import randomdata
+from services.document_workflow import DocumentWorkflow, SigningError
+from services import maintenance as maintenance_service
+from services import scenarios as scenario_service
 
 load_dotenv()
 
@@ -33,7 +33,9 @@ for d in (DOCUMENTS_DIR, SIGNATURES_DIR, KEYS_DIR):
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_fallback_secret_key")
-app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
+MAX_SOURCE_DOCUMENT_SIZE = 30 * 1024 * 1024
+MAX_REQUEST_SIZE = 64 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = MAX_REQUEST_SIZE
 
 VERIFY_BASE_URL = os.environ.get("VERIFY_BASE_URL", "http://localhost:5000/verify")
 
@@ -64,151 +66,52 @@ def inject_flags():
     return {"test_tools": test_tools_enabled(), "status_info": STATUS_INFO}
 
 
+def _document_workflow():
+    return DocumentWorkflow(
+        documents_dir=DOCUMENTS_DIR,
+        signatures_dir=SIGNATURES_DIR,
+        key_module=key_module,
+        signer_module=signer_module,
+        verifier_module=verifier_module,
+        document_module=document_module,
+        qr_module=qr_module,
+        owner_pattern=OWNER_PATTERN,
+        doc_id_pattern=DOC_ID_PATTERN,
+        verify_base_url=VERIFY_BASE_URL,
+        utc_now=utc_now,
+    )
+
+
 def valid_doc_id(doc_id):
-    return bool(doc_id and DOC_ID_PATTERN.match(doc_id))
+    return _document_workflow().valid_doc_id(doc_id)
 
 
 def signature_record_path(doc_id):
-    return SIGNATURES_DIR / f"{doc_id}.json"
+    return _document_workflow().signature_record_path(doc_id)
 
 
 def load_signature_record(doc_id):
-    if not valid_doc_id(doc_id):
-        return None
-    path = signature_record_path(doc_id)
-    if not path.exists():
-        return None
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return _document_workflow().load_signature_record(doc_id)
 
 
 def save_signature_record(doc_id, record):
-    path = signature_record_path(doc_id)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(record, f, indent=2)
+    return _document_workflow().save_signature_record(doc_id, record)
 
 
 def known_hashes(record):
-    """Hash sah suatu dokumen: berkas asli + setiap versi berkas bertanda tangan (bertambah tiap penandatangan)."""
-    return {record["content_hash_hex"], *record.get("signed_hashes", [])}
+    return _document_workflow().known_hashes(record)
+
+
+def record_file_extension(record):
+    return _document_workflow().record_file_extension(record)
 
 
 def list_signature_records():
-    records = []
-    for path in sorted(SIGNATURES_DIR.glob("*.json")):
-        with open(path, "r", encoding="utf-8") as f:
-            records.append(json.load(f))
-    records.sort(key=lambda r: r.get("created_at", ""), reverse=True)
-    return records
+    return _document_workflow().list_signature_records()
 
 
-# ---------------------------------------------------------------------------
-# Penandatanganan (dipakai oleh halaman /sign dan uji otomatis)
-# ---------------------------------------------------------------------------
-
-class SigningError(Exception):
-    pass
-
-
-def perform_signing(owner_id, passphrase, signer_name, position="", institution="",
-                    signed_date=None, doc_id="", pdf_bytes=None, original_filename=None):
-    """Tambahkan satu penandatangan.
-
-    - doc_id kosong  -> dokumen baru, `pdf_bytes` wajib.
-    - doc_id terisi  -> tambah penandatangan pada dokumen tersebut (doc_id harus sudah ada).
-    Kembalikan (doc_id, record). Semua QR-Code penandatangan digambar ulang pada PDF asli
-    sehingga berkas akhir memuat seluruh tanda tangan.
-    """
-    if not owner_id or not passphrase or not signer_name:
-        raise SigningError("Kunci, passphrase, dan nama penandatangan wajib diisi")
-
-    if not OWNER_PATTERN.match(owner_id):
-        raise SigningError("Nama kunci tidak valid")
-    try:
-        private_key = key_module.load_private_key(owner_id, passphrase)
-    except Exception:
-        raise SigningError("Passphrase salah atau kunci tidak ditemukan")
-
-    signed_date = signed_date or utc_now().strftime("%Y-%m-%d")
-
-    if doc_id:
-        record = load_signature_record(doc_id)
-        if record is None:
-            raise SigningError(f"Doc ID {doc_id} tidak ditemukan. Pilih dokumen dari daftar")
-        original_path = DOCUMENTS_DIR / f"{doc_id}_original.pdf"
-        if not original_path.exists():
-            raise SigningError("Berkas asli dokumen tidak ada di server")
-        content_digest = bytes.fromhex(record["content_hash_hex"])
-        if pdf_bytes:
-            temp_check_path = DOCUMENTS_DIR / f"{doc_id}_check_{uuid.uuid4().hex[:8]}.pdf"
-            temp_check_path.write_bytes(pdf_bytes)
-            try:
-                new_digest = pdf_module.compute_content_digest(str(temp_check_path))
-            finally:
-                temp_check_path.unlink(missing_ok=True)
-            if new_digest.hex() not in known_hashes(record):
-                raise SigningError("Isi PDF tidak cocok dengan dokumen asli. Penandatanganan dibatalkan")
-    else:
-        if not pdf_bytes:
-            raise SigningError("Unggah berkas PDF untuk dokumen baru")
-        if not pdf_module.is_valid_pdf_bytes(pdf_bytes):
-            raise SigningError("Berkas bukan PDF yang valid")
-        doc_id = uuid.uuid4().hex[:12]
-        original_path = DOCUMENTS_DIR / f"{doc_id}_original.pdf"
-        original_path.write_bytes(pdf_bytes)
-        content_digest = pdf_module.compute_content_digest(str(original_path))
-        record = {
-            "doc_id": doc_id,
-            "original_filename": original_filename or "dokumen.pdf",
-            "content_hash_hex": content_digest.hex(),
-            "signed_hashes": [],
-            "created_at": utc_now().isoformat(),
-            "signers": []
-        }
-
-    signature = signer_module.sign_digest(private_key, content_digest)
-    public_key_pem = key_module.public_key_to_pem(private_key.public_key()).decode("utf-8")
-
-    record["signers"].append({
-        "signer_id": uuid.uuid4().hex[:8],
-        "owner_id": owner_id,
-        "signer_name": signer_name,
-        "position": position,
-        "institution": institution,
-        "signed_date": signed_date,
-        "algorithm": "RSA-2048-PSS-SHA256",
-        "public_key_pem": public_key_pem,
-        "signature_b64": base64.b64encode(signature).decode("utf-8")
-    })
-
-    qr_images = []
-    block_infos = []
-    for entry in record["signers"]:
-        metadata = {
-            "doc_id": doc_id,
-            "signer_id": entry["signer_id"],
-            "name": entry["signer_name"],
-            "position": entry["position"],
-            "institution": entry["institution"],
-            "date": entry["signed_date"],
-            "hash": record["content_hash_hex"],
-            "verify_url": f"{VERIFY_BASE_URL}?doc_id={doc_id}"
-        }
-        qr_images.append(qr_module.generate_qr_image(metadata))
-        block_infos.append({
-            "name": entry["signer_name"],
-            "position": entry["position"],
-            "institution": entry["institution"],
-            "date": entry["signed_date"],
-        })
-
-    signed_output_path = DOCUMENTS_DIR / f"{doc_id}_signed.pdf"
-    pdf_module.embed_qr_images(str(original_path), qr_images, str(signed_output_path), signers=block_infos)
-
-    signed_hash_hex = pdf_module.compute_content_digest(str(signed_output_path)).hex()
-    record.setdefault("signed_hashes", []).append(signed_hash_hex)
-    save_signature_record(doc_id, record)
-    return doc_id, record
+def perform_signing(*args, **kwargs):
+    return _document_workflow().perform_signing(*args, **kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -216,160 +119,33 @@ def perform_signing(owner_id, passphrase, signer_name, position="", institution=
 # ---------------------------------------------------------------------------
 
 def decide_status(integrity_ok, signers, qr_forged):
-    if not integrity_ok:
-        return "TAMPERED"
-    if qr_forged:
-        return "QR_FORGED"
-    if not signers or not all(x["signature_valid"] for x in signers):
-        return "KEY_MISMATCH"
-    return "VALID"
+    return _document_workflow().decide_status(integrity_ok, signers, qr_forged)
 
 
-def compute_verification(pdf_path, manual_doc_id="", override_public_key=None):
-    try:
-        images = pdf_module.extract_embedded_images(str(pdf_path))
-        decoded_list = qr_module.decode_qr_from_images(images)
-    except Exception:
-        decoded_list = []
-
-    doc_id = manual_doc_id
-    from_qr = False
-    if not doc_id and decoded_list:
-        candidates = [d.get("doc_id", "") for d in decoded_list if isinstance(d, dict) and d.get("doc_id")]
-        registered = [c for c in candidates if DOC_ID_PATTERN.match(c) and load_signature_record(c)]
-        doc_id = (registered or candidates or [""])[0]
-        from_qr = bool(doc_id)
-
-    if not doc_id:
-        return {"status": "NO_QR",
-                "error": "Doc ID tidak ditemukan: QR-Code tidak terbaca dan Doc ID tidak diisi"}
-
-    record = load_signature_record(doc_id)
-    if record is None:
-        return {"status": "QR_FORGED" if from_qr else "NOT_FOUND",
-                "doc_id": doc_id,
-                "error": ("QR-Code memuat Doc ID yang tidak terdaftar, kemungkinan QR palsu"
-                          if from_qr else f"Doc ID {doc_id} tidak ditemukan")}
-
-    try:
-        current_digest = pdf_module.compute_content_digest(str(pdf_path))
-    except Exception:
-        current_digest = None
-
-    stored_digest = bytes.fromhex(record["content_hash_hex"])
-    integrity_ok = current_digest is not None and current_digest.hex() in known_hashes(record)
-
-    qr_by_signer = {
-        d.get("signer_id"): d for d in decoded_list
-        if isinstance(d, dict) and d.get("doc_id") == doc_id
-    }
-
-    signer_results = []
-    for number, entry in enumerate(record["signers"], start=1):
-        public_key = override_public_key if override_public_key else key_module.load_public_key_from_pem(
-            entry["public_key_pem"].encode("utf-8")
-        )
-        signature_bytes = base64.b64decode(entry["signature_b64"])
-        if integrity_ok:
-            sig_valid = verifier_module.verify_digest(public_key, stored_digest, signature_bytes)
-        else:
-            sig_valid = False
-
-        qr = qr_by_signer.get(entry["signer_id"])
-        if qr is None:
-            qr_status = "missing"
-        elif (qr.get("hash") == record["content_hash_hex"]
-              and qr.get("name") == entry["signer_name"]
-              and qr.get("date") == entry["signed_date"]):
-            qr_status = "ok"
-        else:
-            qr_status = "mismatch"
-
-        signer_results.append({
-            "number": number,
-            "signer_id": entry["signer_id"],
-            "signer_name": entry["signer_name"],
-            "position": entry["position"],
-            "institution": entry["institution"],
-            "signed_date": entry["signed_date"],
-            "signature_valid": sig_valid,
-            "qr_status": qr_status
-        })
-
-    qr_forged = any(x["qr_status"] == "mismatch" for x in signer_results)
-    status = decide_status(integrity_ok, signer_results, qr_forged)
-    return {
-        "status": status,
-        "doc_id": doc_id,
-        "original_filename": record.get("original_filename", ""),
-        "integrity_ok": integrity_ok,
-        "signers": signer_results,
-        "signers_total": len(signer_results),
-        "signers_in_document": sum(1 for s in signer_results if s["qr_status"] == "ok"),
-        "qr_metadata_found": decoded_list,
-        "overall_valid": status == "VALID"
-    }
+def compute_verification(pdf_path, manual_doc_id="", override_public_key=None, file_extension=None):
+    return _document_workflow().compute_verification(
+        pdf_path, manual_doc_id, override_public_key, file_extension
+    )
 
 
-def verify_pdf_bytes(data, manual_doc_id="", override_public_key=None):
-    temp_path = DOCUMENTS_DIR / f"verify_temp_{uuid.uuid4().hex[:8]}.pdf"
-    temp_path.write_bytes(data)
-    try:
-        return compute_verification(temp_path, manual_doc_id, override_public_key)
-    finally:
-        temp_path.unlink(missing_ok=True)
+def verify_pdf_bytes(data, manual_doc_id="", override_public_key=None, original_filename=""):
+    return _document_workflow().verify_bytes(data, manual_doc_id, override_public_key, original_filename)
 
 
 def flip_one_byte(data):
-    tampered = bytearray(data)
-    tampered[len(tampered) // 2] ^= 0x01
-    return bytes(tampered)
+    return scenario_service.flip_one_byte(data)
 
 
 def make_fake_qr_pdf():
-    """PDF baru yang belum pernah ditandatangani, ditempeli gambar QR-Code buatan sendiri.
-
-    Isi QR meniru metadata asli (nama, hash, tautan), tetapi Doc ID-nya tidak terdaftar.
-    Kembalikan (bytes, metadata_palsu).
-    """
-    base_bytes, _ = randomdata.make_random_pdf_bytes()
-    fake_doc_id = secrets.token_hex(6)
-    fake = {
-        "doc_id": fake_doc_id,
-        "signer_id": secrets.token_hex(4),
-        "name": randomdata.random_person_name(),
-        "position": "Dekan Fakultas",
-        "institution": "Universitas Contoh Nusantara",
-        "date": utc_now().strftime("%Y-%m-%d"),
-        "hash": secrets.token_hex(32),
-        "verify_url": f"{VERIFY_BASE_URL}?doc_id={fake_doc_id}",
-    }
-    src = DOCUMENTS_DIR / f"fake_src_{secrets.token_hex(4)}.pdf"
-    out = DOCUMENTS_DIR / f"fake_out_{secrets.token_hex(4)}.pdf"
-    src.write_bytes(base_bytes)
-    try:
-        pdf_module.embed_qr_images(str(src), [qr_module.generate_qr_image(fake)], str(out))
-        return out.read_bytes(), fake
-    finally:
-        src.unlink(missing_ok=True)
-        out.unlink(missing_ok=True)
+    return scenario_service.make_fake_qr_pdf(
+        DOCUMENTS_DIR, VERIFY_BASE_URL, utc_now, randomdata, qr_module, pdf_module
+    )
 
 
 def paste_real_qr_on_other_pdf(signed_pdf_bytes):
-    """Ambil QR-Code asli dari PDF bertanda tangan, tempel ke PDF lain yang tidak pernah ditandatangani."""
-    src_signed = DOCUMENTS_DIR / f"paste_signed_{secrets.token_hex(4)}.pdf"
-    src_other = DOCUMENTS_DIR / f"paste_other_{secrets.token_hex(4)}.pdf"
-    out = DOCUMENTS_DIR / f"paste_out_{secrets.token_hex(4)}.pdf"
-    src_signed.write_bytes(signed_pdf_bytes)
-    other_bytes, _ = randomdata.make_random_pdf_bytes()
-    src_other.write_bytes(other_bytes)
-    try:
-        images = pdf_module.extract_embedded_images(str(src_signed))
-        pdf_module.embed_qr_images(str(src_other), images[:1], str(out))
-        return out.read_bytes()
-    finally:
-        for f in (src_signed, src_other, out):
-            f.unlink(missing_ok=True)
+    return scenario_service.paste_real_qr_on_other_pdf(
+        signed_pdf_bytes, DOCUMENTS_DIR, randomdata, pdf_module
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -391,15 +167,7 @@ def index():
 
 
 def clear_storage():
-    """Hapus semua dokumen, data tanda tangan, dan kunci. Kembalikan jumlah berkas terhapus."""
-    counts = {"documents": 0, "signatures": 0, "keys": 0}
-    for name, folder in (("documents", DOCUMENTS_DIR), ("signatures", SIGNATURES_DIR),
-                         ("keys", key_module.KEYS_DIR)):
-        for path in Path(folder).glob("*"):
-            if path.is_file() and path.name != ".gitkeep":
-                path.unlink(missing_ok=True)
-                counts[name] += 1
-    return counts
+    return maintenance_service.clear_storage(DOCUMENTS_DIR, SIGNATURES_DIR, key_module.KEYS_DIR)
 
 
 @app.route("/clear", methods=["POST"])
@@ -475,15 +243,32 @@ def sign_page():
     )
 
 
+@app.errorhandler(413)
+def upload_too_large(_error):
+    flash("Request terlalu besar. Berkas sumber maksimal 30 MiB; hasil signed untuk verifikasi dapat mencapai 64 MiB.", "error")
+    endpoint = "verify_page" if request.path == url_for("verify_page") else "sign_page"
+    return redirect(url_for(endpoint))
+
+
 @app.route("/download/<doc_id>")
 def download_signed(doc_id):
-    filename = f"{doc_id}_signed.pdf"
-    return send_from_directory(str(DOCUMENTS_DIR), filename, as_attachment=True)
+    record = load_signature_record(doc_id)
+    if record is None:
+        abort(404)
+    extension = record_file_extension(record)
+    filename = f"{doc_id}_signed{extension}"
+    return send_from_directory(
+        str(DOCUMENTS_DIR), filename, as_attachment=True,
+        download_name=filename, mimetype=document_module.MIME_TYPES[extension]
+    )
 
 
 @app.route("/preview/<doc_id>")
 def preview_signed(doc_id):
     """Tampilkan PDF bertanda tangan di dalam halaman (iframe) agar semua blok tanda tangan terlihat."""
+    record = load_signature_record(doc_id)
+    if record is None or record_file_extension(record) != ".pdf":
+        abort(404)
     response = send_from_directory(
         str(DOCUMENTS_DIR), f"{doc_id}_signed.pdf", mimetype="application/pdf"
     )
@@ -506,7 +291,12 @@ def verify_page():
         return render_template("verify.html", results=results, prefill_doc_id=manual_doc_id)
 
     if not (uploaded_file and uploaded_file.filename):
-        flash("Unggah berkas PDF terlebih dahulu", "error")
+        flash("Pilih berkas untuk diverifikasi", "error")
+        return redirect(url_for("verify_page"))
+
+    document_bytes = uploaded_file.read()
+    if not document_module.is_valid_document(document_bytes, uploaded_file.filename):
+        flash("Format tidak didukung atau berkas tidak valid. Gunakan PDF, DOCX, JPG, JPEG, PNG, TXT, atau XLSX", "error")
         return redirect(url_for("verify_page"))
 
     override_public_key = None
@@ -516,7 +306,7 @@ def verify_page():
         except Exception:
             return render_results({"error": "Kunci publik tidak valid (harus berkas .pem)"})
 
-    results = verify_pdf_bytes(uploaded_file.read(), manual_doc_id, override_public_key)
+    results = verify_pdf_bytes(document_bytes, manual_doc_id, override_public_key, uploaded_file.filename)
     return render_results(results)
 
 

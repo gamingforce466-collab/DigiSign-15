@@ -50,6 +50,38 @@ def decode_qr_image(pil_image):
     return None
 
 
+def decode_qr_image_multiple(pil_image):
+    rgb = pil_image.convert("RGB")
+    arr = np.array(rgb)
+    bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+    padded = cv2.copyMakeBorder(bgr, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=(255, 255, 255))
+    results = []
+    seen = set()
+    for factory in _detector_factories():
+        detector = factory()
+        for candidate in (bgr, padded):
+            try:
+                found, values, _, _ = detector.detectAndDecodeMulti(candidate)
+            except (cv2.error, AttributeError):
+                continue
+            if not found:
+                continue
+            for value in values:
+                if not value or value in seen:
+                    continue
+                try:
+                    parsed = json.loads(value)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(parsed, dict):
+                    results.append(parsed)
+                    seen.add(value)
+    if results:
+        return results
+    decoded = decode_qr_image(pil_image)
+    return [decoded] if decoded is not None else []
+
+
 def decode_qr_from_images(pil_images):
     results = []
     for img in pil_images:
