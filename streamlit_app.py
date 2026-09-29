@@ -1,11 +1,9 @@
 import hmac
-import io
 import os
 from datetime import date
 from urllib.parse import urlsplit
 
 import streamlit as st
-from reportlab.pdfgen import canvas
 
 st.set_page_config(page_title="DigiSign", page_icon="✍", layout="wide")
 
@@ -434,117 +432,6 @@ def _render_verification():
         _show_verification_result(results)
 
 
-def _render_demo():
-    st.title("Demo end-to-end")
-    st.caption("Riwayat, dokumen, dan key demo dimuat dari penyimpanan server, bukan dari sesi browser.")
-    st.info("Key demo `demo_digisign` dapat dipakai untuk tanda tangan manual. Passphrase-nya sama dengan password akses aplikasi.")
-
-    if st.button("Jalankan demo lengkap", type="primary", key="run_end_to_end_demo"):
-        owner_id = "demo_digisign"
-        passphrase = ACCESS_PASSWORD
-        try:
-            with st.spinner("Membuat kunci dan menjalankan pengujian..."):
-                if not key_module.key_exists(owner_id):
-                    key_module.generate_keypair(owner_id, passphrase)
-                else:
-                    try:
-                        key_module.load_private_key(owner_id, passphrase)
-                    except Exception:
-                        key_module.delete_keypair(owner_id)
-                        key_module.generate_keypair(owner_id, passphrase)
-                source = io.BytesIO()
-                sample_pdf = canvas.Canvas(source)
-                sample_pdf.drawString(72, 720, "Dokumen contoh DigiSign untuk demo end-to-end")
-                sample_pdf.save()
-
-                doc_id, record = flask_app.perform_signing(
-                    owner_id,
-                    passphrase,
-                    "Penandatangan Demo",
-                    "Penguji",
-                    "DigiSign",
-                    date.today().isoformat(),
-                    pdf_bytes=source.getvalue(),
-                    original_filename="dokumen_demo.pdf",
-                )
-                signed_path = flask_app.DOCUMENTS_DIR / f"{doc_id}_signed.pdf"
-                signed_bytes = signed_path.read_bytes()
-                valid_result = flask_app.verify_pdf_bytes(
-                    signed_bytes, original_filename=signed_path.name
-                )
-                tampered_result = flask_app.verify_pdf_bytes(
-                    flask_app.flip_one_byte(signed_bytes),
-                    doc_id,
-                    original_filename=signed_path.name,
-                )
-                record["demo_results"] = {
-                    "valid": valid_result.get("status"),
-                    "tampered": tampered_result.get("status"),
-                }
-                flask_app.save_signature_record(doc_id, record)
-                st.success(f"Demo selesai. Doc ID `{doc_id}` tersimpan di server.")
-        except Exception as exc:
-            st.error(f"Demo gagal dijalankan: {exc}")
-
-    demo_records = [
-        record for record in flask_app.list_signature_records()
-        if any(signer.get("owner_id", "").startswith("demo_") for signer in record.get("signers", []))
-    ]
-    st.subheader("Riwayat demo tersimpan")
-    if not demo_records:
-        st.info("Belum ada data demo. Jalankan demo untuk membuat key dan dokumen pertama.")
-    for record in demo_records:
-        doc_id = record["doc_id"]
-        extension = flask_app.record_file_extension(record)
-        original_path = flask_app.DOCUMENTS_DIR / f"{doc_id}_original{extension}"
-        signed_path = flask_app.DOCUMENTS_DIR / f"{doc_id}_signed{extension}"
-        owner_ids = sorted({signer.get("owner_id", "") for signer in record.get("signers", [])})
-        with st.container(border=True):
-            st.markdown(f"**{record.get('original_filename', 'Dokumen demo')}**")
-            st.caption(f"Doc ID: `{doc_id}` · {record.get('created_at', '')[:16].replace('T', ' ')}")
-            results = record.get("demo_results", {})
-            if results:
-                status_columns = st.columns(2)
-                status_columns[0].metric("Dokumen asli", results.get("valid", "-"))
-                status_columns[1].metric("Dokumen diubah", results.get("tampered", "-"))
-            downloads = st.columns(4)
-            if original_path.is_file():
-                downloads[0].download_button(
-                    "Dokumen asli",
-                    data=original_path.read_bytes(),
-                    file_name=original_path.name,
-                    mime=document_formats.MIME_TYPES[extension],
-                    key=f"download_demo_original_{doc_id}",
-                )
-            if signed_path.is_file():
-                downloads[1].download_button(
-                    "Bertanda tangan",
-                    data=signed_path.read_bytes(),
-                    file_name=signed_path.name,
-                    mime=document_formats.MIME_TYPES[extension],
-                    key=f"download_demo_signed_{doc_id}",
-                )
-            for index, owner_id in enumerate(owner_ids):
-                public_path = key_module.KEYS_DIR / f"{owner_id}_public.pem"
-                private_path = key_module.KEYS_DIR / f"{owner_id}_private.pem"
-                if public_path.is_file():
-                    downloads[2].download_button(
-                        f"Public key {owner_id}",
-                        data=public_path.read_bytes(),
-                        file_name=public_path.name,
-                        mime="application/x-pem-file",
-                        key=f"download_demo_public_{doc_id}_{index}",
-                    )
-                if private_path.is_file():
-                    downloads[3].download_button(
-                        f"Private key terenkripsi {owner_id}",
-                        data=private_path.read_bytes(),
-                        file_name=private_path.name,
-                        mime="application/x-pem-file",
-                        key=f"download_demo_private_{doc_id}_{index}",
-                    )
-
-
 def _render_benchmark():
     st.title("Uji Kuantitatif")
     st.caption("Benchmark tanda tangan/verifikasi, ukuran kunci, dan uji tamper satu byte.")
@@ -607,7 +494,7 @@ if st.query_params.get("doc_id") and "page" not in st.session_state:
 st.sidebar.title("DigiSign")
 page = st.sidebar.radio(
     "Menu",
-    ["Beranda", "Tanda Tangan", "Verifikasi", "Demo End-to-End", "Uji Kuantitatif"],
+    ["Beranda", "Tanda Tangan", "Verifikasi", "Uji Kuantitatif"],
     key="page",
 )
 if st.sidebar.button("Keluar"):
@@ -619,7 +506,5 @@ elif page == "Tanda Tangan":
     _render_signing()
 elif page == "Verifikasi":
     _render_verification()
-elif page == "Demo End-to-End":
-    _render_demo()
 else:
     _render_benchmark()
