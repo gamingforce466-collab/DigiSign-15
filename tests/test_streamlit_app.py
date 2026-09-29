@@ -308,6 +308,8 @@ def test_streamlit_random_key_and_signer_controls_work(demo_storage):
     assert key_module.key_exists(owner_id)
     assert (keys_dir / f"{owner_id}_private.pem").is_file()
     assert app.text_input(key="signing_owner_id").value == owner_id
+    assert any(button.label == "Unduh private key terenkripsi" for button in app.download_button)
+    assert any(button.label == "Unduh public key" for button in app.download_button)
 
     next(button for button in app.button if button.label == "Isi data penandatangan acak").click().run()
     assert app.text_input(key="signer_name").value

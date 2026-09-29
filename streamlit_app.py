@@ -191,6 +191,28 @@ def _render_key_creation():
     if created_owner:
         st.session_state["signing_owner_id"] = created_owner
         st.success(f"Pasangan kunci RSA-2048 untuk `{created_owner}` berhasil dibuat.")
+    downloadable_owner = st.session_state.get("last_created_key_owner")
+    if downloadable_owner and key_module.key_exists(downloadable_owner):
+        private_path = key_module.KEYS_DIR / f"{downloadable_owner}_private.pem"
+        public_path = key_module.KEYS_DIR / f"{downloadable_owner}_public.pem"
+        private_download, public_download = st.columns(2)
+        private_download.download_button(
+            "Unduh private key terenkripsi",
+            data=private_path.read_bytes(),
+            file_name=private_path.name,
+            mime="application/x-pem-file",
+            key=f"download_created_private_{downloadable_owner}",
+            use_container_width=True,
+        )
+        public_download.download_button(
+            "Unduh public key",
+            data=public_path.read_bytes(),
+            file_name=public_path.name,
+            mime="application/x-pem-file",
+            key=f"download_created_public_{downloadable_owner}",
+            use_container_width=True,
+        )
+        st.caption("Private key dienkripsi dengan passphrase yang Anda buat. Simpan file dan passphrase dengan aman.")
     if st.button("Isi data kunci acak", key="random_key_data"):
         st.session_state["new_key_owner"] = randomdata.random_owner_id()
         st.session_state["new_key_passphrase"] = randomdata.random_passphrase()
@@ -214,6 +236,7 @@ def _render_key_creation():
                 st.error(f"Kunci gagal dibuat: {exc}")
             else:
                 st.session_state["created_key_owner"] = owner_id
+                st.session_state["last_created_key_owner"] = owner_id
                 st.rerun()
 
 
