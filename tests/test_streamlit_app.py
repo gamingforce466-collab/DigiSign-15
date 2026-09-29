@@ -127,8 +127,8 @@ def test_streamlit_sign_and_verify_every_supported_format(demo_storage, extensio
     documents_dir, signatures_dir, _ = demo_storage
     app = _logged_in_app()
     app.radio(key="page").set_value("Tanda Tangan").run()
-    app.selectbox[1].set_value(OWNER_A).run()
-    app.text_input[2].set_value(PASS_A)
+    app.text_input(key="signing_owner_id").set_value(OWNER_A).run()
+    app.text_input(key="signing_passphrase").set_value(PASS_A)
     app.text_input(key="signer_name").set_value("Penandatangan Demo")
     sample = _sample_document(extension)
     filename = f"dokumen_asli{extension}"
@@ -202,8 +202,8 @@ def test_streamlit_supports_multiple_signers_and_old_versions(demo_storage):
     documents_dir, signatures_dir, _ = demo_storage
     app = _logged_in_app()
     app.radio(key="page").set_value("Tanda Tangan").run()
-    app.selectbox[1].set_value(OWNER_A).run()
-    app.text_input[2].set_value(PASS_A)
+    app.text_input(key="signing_owner_id").set_value(OWNER_A).run()
+    app.text_input(key="signing_passphrase").set_value(PASS_A)
     app.text_input(key="signer_name").set_value("Penandatangan Satu")
     app.file_uploader[0].upload("dokumen_asli.pdf", _sample_document(".pdf"), MIME_TYPES[".pdf"]).run(timeout=60)
     app.button(key="FormSubmitter:sign_document_form-Tandatangani").click().run(timeout=60)
@@ -213,8 +213,8 @@ def test_streamlit_supports_multiple_signers_and_old_versions(demo_storage):
     version_one = (documents_dir / f"{doc_id}_signed.pdf").read_bytes()
     app.radio(key="page").set_value("Tanda Tangan").run()
     app.selectbox[0].set_value(doc_id).run()
-    app.selectbox[1].set_value(OWNER_B).run()
-    app.text_input[2].set_value(PASS_B)
+    app.text_input(key="signing_owner_id").set_value(OWNER_B).run()
+    app.text_input(key="signing_passphrase").set_value(PASS_B)
     app.text_input(key="signer_name").set_value("Penandatangan Dua")
     app.button(key="FormSubmitter:sign_document_form-Tandatangani").click().run(timeout=60)
     assert not app.exception, app.exception
@@ -245,8 +245,8 @@ def test_streamlit_add_signer_button_navigates_to_selected_document(demo_storage
     assert not app.exception, app.exception
     assert app.radio(key="page").value == "Tanda Tangan"
     assert app.selectbox[0].value == doc_id
-    app.selectbox[1].set_value(OWNER_B).run()
-    app.text_input[2].set_value(PASS_B)
+    app.text_input(key="signing_owner_id").set_value(OWNER_B).run()
+    app.text_input(key="signing_passphrase").set_value(PASS_B)
     app.text_input(key="signer_name").set_value("Penandatangan Dua")
     app.button(key="FormSubmitter:sign_document_form-Tandatangani").click().run(timeout=60)
     assert not app.exception, app.exception
@@ -283,12 +283,20 @@ def test_streamlit_random_key_and_signer_controls_work(demo_storage):
     app.button(key="FormSubmitter:create_key_form-Buat kunci").click().run()
     assert key_module.key_exists(owner_id)
     assert (keys_dir / f"{owner_id}_private.pem").is_file()
-    assert owner_id in app.selectbox[1].options
+    assert app.text_input(key="signing_owner_id").value == owner_id
 
     next(button for button in app.button if button.label == "Isi data penandatangan acak").click().run()
     assert app.text_input(key="signer_name").value
     assert app.text_input(key="signer_position").value
     assert app.text_input(key="signer_institution").value
+
+
+def test_signing_key_name_survives_ten_streamlit_reruns(demo_storage):
+    app = _logged_in_app()
+    app.radio(key="page").set_value("Tanda Tangan").run()
+    for _ in range(10):
+        app.text_input(key="signing_owner_id").set_value(OWNER_A).run()
+        assert app.text_input(key="signing_owner_id").value == OWNER_A
 
 
 def test_streamlit_clear_data_action_works_after_confirmation(demo_storage):
@@ -334,8 +342,8 @@ def test_streamlit_sign_form_reports_invalid_password_and_invalid_document(demo_
     _, signatures_dir, _ = demo_storage
     app = _logged_in_app()
     app.radio(key="page").set_value("Tanda Tangan").run()
-    app.selectbox[1].set_value(OWNER_A).run()
-    app.text_input[2].set_value("incorrect-passphrase")
+    app.text_input(key="signing_owner_id").set_value(OWNER_A).run()
+    app.text_input(key="signing_passphrase").set_value("incorrect-passphrase")
     app.text_input(key="signer_name").set_value("Penandatangan Uji")
     app.file_uploader[0].upload("dokumen.pdf", _sample_document(".pdf"), MIME_TYPES[".pdf"]).run()
     app.button(key="FormSubmitter:sign_document_form-Tandatangani").click().run(timeout=60)
@@ -344,8 +352,8 @@ def test_streamlit_sign_form_reports_invalid_password_and_invalid_document(demo_
 
     app = _logged_in_app()
     app.radio(key="page").set_value("Tanda Tangan").run()
-    app.selectbox[1].set_value(OWNER_A).run()
-    app.text_input[2].set_value(PASS_A)
+    app.text_input(key="signing_owner_id").set_value(OWNER_A).run()
+    app.text_input(key="signing_passphrase").set_value(PASS_A)
     app.text_input(key="signer_name").set_value("Penandatangan Uji")
     app.file_uploader[0].upload("rusak.pdf", b"bukan berkas PDF", MIME_TYPES[".pdf"]).run()
     app.button(key="FormSubmitter:sign_document_form-Tandatangani").click().run(timeout=60)

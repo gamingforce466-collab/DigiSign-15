@@ -157,6 +157,7 @@ def _render_key_creation():
     st.subheader("Buat pasangan kunci")
     created_owner = st.session_state.pop("created_key_owner", None)
     if created_owner:
+        st.session_state["signing_owner_id"] = created_owner
         st.success(f"Pasangan kunci RSA-2048 untuk `{created_owner}` berhasil dibuat.")
     if st.button("Isi data kunci acak", key="random_key_data"):
         st.session_state["new_key_owner"] = randomdata.random_owner_id()
@@ -199,6 +200,16 @@ def _render_signing():
         st.session_state["signer_institution"] = values["institution"]
         st.session_state["signer_date"] = date.fromisoformat(values["signed_date"])
 
+    owner_id = st.text_input(
+        "Kunci penandatangan",
+        key="signing_owner_id",
+        placeholder="Ketik nama kunci",
+    ).strip()
+    if key_owners:
+        st.caption("Kunci tersedia: " + ", ".join(key_owners))
+    else:
+        st.caption("Belum ada kunci. Buat pasangan kunci terlebih dahulu.")
+
     record_by_id = {record["doc_id"]: record for record in records}
     selected_doc_id = st.session_state.get("sign_doc_id", "")
     if selected_doc_id and selected_doc_id not in record_by_id:
@@ -222,8 +233,7 @@ def _render_signing():
             format_func=lambda value: label_by_id[value],
             key="sign_doc_id",
         )
-        owner_id = st.selectbox("Kunci penandatangan", [""] + key_owners)
-        passphrase = st.text_input("Passphrase kunci", type="password")
+        passphrase = st.text_input("Passphrase kunci", type="password", key="signing_passphrase")
         signer_name = st.text_input("Nama penandatangan", key="signer_name")
         position = st.text_input("Jabatan", key="signer_position")
         institution = st.text_input("Institusi", key="signer_institution")
@@ -237,7 +247,11 @@ def _render_signing():
 
     if submitted:
         data = uploaded.getvalue() if uploaded else None
-        if data and len(data) > MAX_SOURCE_DOCUMENT_SIZE and not doc_id:
+        if not owner_id:
+            st.error("Isi nama kunci penandatangan.")
+        elif owner_id not in key_owners:
+            st.error("Kunci tidak ditemukan. Periksa nama kunci yang tersedia di Beranda.")
+        elif data and len(data) > MAX_SOURCE_DOCUMENT_SIZE and not doc_id:
             st.error("Ukuran berkas sumber maksimal 30 MiB.")
         elif data and len(data) > MAX_REQUEST_SIZE:
             st.error("Ukuran berkas maksimal 64 MiB.")
