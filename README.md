@@ -1,5 +1,16 @@
 Aplikasi web tanda tangan digital untuk dokumen PDF. Dokumen ditandatangani dengan RSA-2048 (skema PSS, SHA-256), disisipi QR-Code berisi metadata penandatangan, lalu keasliannya dapat diverifikasi. Contoh pemakaian: surat keterangan, sertifikat kegiatan, dan lembar pengesahan laporan.
 
+### Anggota Kelompok
+
+| No. | Nama Lengkap | NPM |
+| :-: | :--- | :-: |
+| 1 | Raffa Erlangga | 247006111145 |
+| 2 | Rossyada Adly | 247006111169 |
+| 3 | Rozan Aqila Daris | 247006111127 |
+
+
+
+
 Proyek Topik D: Aplikasi Digital Signature.
 
 ## Daftar Isi
