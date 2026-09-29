@@ -1,6 +1,7 @@
 import hmac
 import os
 from datetime import date
+from urllib.parse import urlsplit
 
 import streamlit as st
 
@@ -40,9 +41,21 @@ STATUS_INFO = {
     "NO_QR": "QR-Code tidak terbaca dan Doc ID tidak diisi.",
 }
 
-flask_app.VERIFY_BASE_URL = (
-    _setting("STREAMLIT_VERIFY_BASE_URL") or "http://localhost:8501"
-).rstrip("/")
+def _public_app_url():
+    configured_url = _setting("STREAMLIT_VERIFY_BASE_URL")
+    if configured_url:
+        return str(configured_url).rstrip("/")
+    try:
+        current_url = st.context.url
+    except Exception:
+        current_url = ""
+    parsed_url = urlsplit(current_url)
+    if parsed_url.scheme in {"http", "https"} and parsed_url.netloc:
+        return f"{parsed_url.scheme}://{parsed_url.netloc}"
+    return "http://localhost:8501"
+
+
+flask_app.VERIFY_BASE_URL = _public_app_url()
 ACCESS_PASSWORD = str(_setting("STREAMLIT_ACCESS_PASSWORD", "")).strip()
 
 
@@ -106,10 +119,13 @@ def _render_home():
                         use_container_width=True,
                     )
             with add_signer:
-                if st.button("Tambah TTD", key=f"add_signer_{doc_id}", use_container_width=True):
-                    st.session_state["sign_doc_id"] = doc_id
-                    st.session_state["page"] = "Tanda Tangan"
-                    st.rerun()
+                st.button(
+                    "Tambah TTD",
+                    key=f"add_signer_{doc_id}",
+                    on_click=_open_signing_page,
+                    args=(doc_id,),
+                    use_container_width=True,
+                )
 
     st.subheader("Kunci")
     if key_owners:
@@ -130,6 +146,11 @@ def _render_home():
             f"{counts['keys']} kunci."
         )
         st.rerun()
+
+
+def _open_signing_page(doc_id):
+    st.session_state["sign_doc_id"] = doc_id
+    st.session_state["page"] = "Tanda Tangan"
 
 
 def _render_key_creation():

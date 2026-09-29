@@ -44,6 +44,7 @@ def demo_storage(tmp_path, monkeypatch):
     monkeypatch.setattr(app_module, "VERIFY_BASE_URL", "http://localhost:8501")
     monkeypatch.setenv("STREAMLIT_ACCESS_PASSWORD", ACCESS_PASSWORD)
     monkeypatch.delenv("DIGISIGN_DATA_DIR", raising=False)
+    monkeypatch.delenv("STREAMLIT_VERIFY_BASE_URL", raising=False)
     monkeypatch.delenv("ENABLE_TEST_TOOLS", raising=False)
     monkeypatch.delenv("ENABLE_DATA_RESET", raising=False)
     key_module.generate_keypair(OWNER_A, PASS_A)
@@ -230,6 +231,34 @@ def test_streamlit_supports_multiple_signers_and_old_versions(demo_storage):
         assert metrics["Total penandatangan"] == "2"
 
 
+def test_streamlit_add_signer_button_navigates_to_selected_document(demo_storage):
+    documents_dir, signatures_dir, _ = demo_storage
+    doc_id, _ = app_module.perform_signing(
+        OWNER_A, PASS_A, "Penandatangan Satu", "Ketua", "Universitas Demo",
+        "2026-09-30", pdf_bytes=_sample_document(".xlsx"), original_filename="Sheet 1-2.xlsx",
+    )
+    assert (documents_dir / f"{doc_id}_signed.xlsx").is_file()
+    assert (signatures_dir / f"{doc_id}.json").is_file()
+
+    app = _logged_in_app()
+    app.button(key=f"add_signer_{doc_id}").click().run()
+    assert not app.exception, app.exception
+    assert app.radio(key="page").value == "Tanda Tangan"
+    assert app.selectbox[0].value == doc_id
+    app.selectbox[1].set_value(OWNER_B).run()
+    app.text_input[2].set_value(PASS_B)
+    app.text_input(key="signer_name").set_value("Penandatangan Dua")
+    app.button(key="FormSubmitter:sign_document_form-Tandatangani").click().run(timeout=60)
+    assert not app.exception, app.exception
+    assert not app.error, [message.value for message in app.error]
+    record = app_module.load_signature_record(doc_id)
+    assert len(record["signers"]) == 2
+    signed_path = documents_dir / f"{doc_id}_signed.xlsx"
+    assert signed_path.is_file()
+    verification = _verify_in_streamlit(signed_path.read_bytes(), signed_path.name)
+    assert any(message.value.startswith("VALID:") for message in verification.success)
+
+
 def test_streamlit_demo_controls_and_benchmark_render(demo_storage):
     app = _logged_in_app()
     assert any(button.label == "Bersihkan semua data" for button in app.button)
@@ -271,3 +300,75 @@ def test_streamlit_clear_data_action_works_after_confirmation(demo_storage):
     assert list(documents_dir.iterdir()) == []
     assert list(signatures_dir.iterdir()) == []
     assert list(keys_dir.iterdir()) == []
+
+
+def test_streamlit_login_rejects_wrong_password_and_logout_returns_to_login(demo_storage):
+    app = AppTest.from_file(str(STREAMLIT_APP), default_timeout=60).run()
+    app.text_input[0].set_value("password-salah")
+    app.button(key="FormSubmitter:access_form-Masuk").click().run()
+    assert any("Password akses salah" in message.value for message in app.error)
+    assert not app.radio
+
+    app.text_input[0].set_value(ACCESS_PASSWORD)
+    app.button(key="FormSubmitter:access_form-Masuk").click().run()
+    assert not app.exception, app.exception
+    assert app.radio(key="page").value == "Beranda"
+    next(button for button in app.button if button.label == "Keluar").click().run()
+    assert not app.exception, app.exception
+    assert app.text_input[0].label == "Password akses"
+    assert not app.radio
+
+
+def test_streamlit_deep_link_opens_verification_with_doc_id(demo_storage):
+    app = AppTest.from_file(str(STREAMLIT_APP), default_timeout=60)
+    app.query_params["doc_id"] = "abcdef123456"
+    app.run()
+    app.text_input[0].set_value(ACCESS_PASSWORD)
+    app.button(key="FormSubmitter:access_form-Masuk").click().run()
+    assert not app.exception, app.exception
+    assert app.radio(key="page").value == "Verifikasi"
+    assert app.text_input(key="verify_doc_id").value == "abcdef123456"
+
+
+def test_streamlit_sign_form_reports_invalid_password_and_invalid_document(demo_storage):
+    _, signatures_dir, _ = demo_storage
+    app = _logged_in_app()
+    app.radio(key="page").set_value("Tanda Tangan").run()
+    app.selectbox[1].set_value(OWNER_A).run()
+    app.text_input[2].set_value("incorrect-passphrase")
+    app.text_input(key="signer_name").set_value("Penandatangan Uji")
+    app.file_uploader[0].upload("dokumen.pdf", _sample_document(".pdf"), MIME_TYPES[".pdf"]).run()
+    app.button(key="FormSubmitter:sign_document_form-Tandatangani").click().run(timeout=60)
+    assert any("Passphrase salah" in message.value for message in app.error)
+    assert list(signatures_dir.glob("*.json")) == []
+
+    app = _logged_in_app()
+    app.radio(key="page").set_value("Tanda Tangan").run()
+    app.selectbox[1].set_value(OWNER_A).run()
+    app.text_input[2].set_value(PASS_A)
+    app.text_input(key="signer_name").set_value("Penandatangan Uji")
+    app.file_uploader[0].upload("rusak.pdf", b"bukan berkas PDF", MIME_TYPES[".pdf"]).run()
+    app.button(key="FormSubmitter:sign_document_form-Tandatangani").click().run(timeout=60)
+    assert any("bukan PDF yang valid" in message.value for message in app.error)
+    assert list(signatures_dir.glob("*.json")) == []
+
+
+def test_streamlit_verification_reports_missing_file_and_invalid_public_key(demo_storage):
+    documents_dir, _, _ = demo_storage
+    doc_id, _ = app_module.perform_signing(
+        OWNER_A, PASS_A, "Penandatangan Uji", pdf_bytes=_sample_document(".pdf"),
+        original_filename="dokumen.pdf",
+    )
+    signed_path = documents_dir / f"{doc_id}_signed.pdf"
+
+    app = _logged_in_app()
+    app.radio(key="page").set_value("Verifikasi").run()
+    app.button(key="FormSubmitter:verify_document_form-Verifikasi").click().run()
+    assert any("Pilih dokumen" in message.value for message in app.error)
+
+    app = _logged_in_app()
+    app.radio(key="page").set_value("Verifikasi").run()
+    app.file_uploader[0].upload(signed_path.name, signed_path.read_bytes(), MIME_TYPES[".pdf"]).run()
+    app.file_uploader[1].upload("invalid.pem", b"not a PEM key", "application/x-pem-file").run()
+    app.button(key="FormSubmitter:verify_document_form-Verifikasi").click().run(timeout=60)
+    assert any("Kunci publik tidak valid" in message.value for message in app.error)
