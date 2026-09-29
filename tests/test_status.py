@@ -1,5 +1,4 @@
 """Tes status verifikasi: VALID, TAMPERED, KEY_MISMATCH, QR_FORGED, dan 3 penandatangan."""
-import io
 import os
 import sys
 

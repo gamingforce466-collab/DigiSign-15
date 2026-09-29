@@ -17,6 +17,7 @@ from crypto import keys as key_module
 from crypto import signer as signer_module
 from crypto import verifier as verifier_module
 from crypto import benchmark as benchmark_module
+from crypto import excel_exporter as excel_module
 from pdf import handler as pdf_module
 from qr import generator as qr_module
 import randomdata
@@ -531,7 +532,7 @@ def store_quantitative(report):
     """Simpan hasil dan berkas Excel sekali saja; unduhan hanya mengirim berkas ini."""
     app.config["LAST_QUANT"] = report
     try:
-        app.config["LAST_QUANT_XLSX"] = benchmark_module.export_xlsx(report)
+        app.config["LAST_QUANT_XLSX"] = excel_module.export_xlsx(report)
         return True
     except ImportError:
         app.config["LAST_QUANT_XLSX"] = None

@@ -1,7 +1,6 @@
-"""Pembangkit data acak untuk fitur uji otomatis.
+"""Pembangkit data contoh untuk tombol Isi Data Acak dan pengujian.
 
-Dipakai oleh halaman web (tombol "Isi Data Acak", PDF contoh acak, dan halaman
-/autotest) supaya pengujian tidak perlu mengetik data secara manual.
+Dipakai oleh halaman web dan tes supaya data tidak perlu diketik berulang kali.
 Seluruh nilai rahasia (passphrase) dibangkitkan dengan modul `secrets` (CSPRNG).
 """
 import random
@@ -73,17 +72,6 @@ def random_signer():
         "institution": random.choice(INSTITUTIONS),
         "signed_date": random_date(),
     }
-
-
-def random_two_signers():
-    """Dua penandatangan dengan nama dan jabatan yang berbeda (untuk uji multi-signer)."""
-    first = random_signer()
-    second = random_signer()
-    while second["signer_name"] == first["signer_name"]:
-        second["signer_name"] = random_person_name()
-    while second["position"] == first["position"]:
-        second["position"] = random.choice(POSITIONS)
-    return first, second
 
 
 def random_document():

@@ -16,10 +16,3 @@ def verify_digest(public_key, digest, signature):
         return False
     except Exception:
         return False
-
-
-def verify_multiple(entries):
-    results = []
-    for public_key, digest, signature in entries:
-        results.append(verify_digest(public_key, digest, signature))
-    return results

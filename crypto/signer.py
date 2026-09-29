@@ -9,10 +9,3 @@ def sign_digest(private_key, digest):
         utils.Prehashed(hashes.SHA256())
     )
     return signature
-
-
-def sign_multiple(private_keys_with_digest):
-    signatures = []
-    for private_key, digest in private_keys_with_digest:
-        signatures.append(sign_digest(private_key, digest))
-    return signatures

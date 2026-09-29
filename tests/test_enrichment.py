@@ -105,25 +105,24 @@ def test_verify_page_shows_two_of_two_and_earlier_version_one_of_two(client):
 
 
 def test_unknown_doc_id_is_rejected_not_silently_created(client):
-    c, docs, sigs = client
+    c, _, sigs = client
     pdf_bytes, _ = randomdata.make_random_pdf_bytes()
-    resp = post_sign(c, OWNER_A, PASS_A, "Budi", pdf_bytes, doc_id="abcdef123456", follow_redirects=True) \
-        if False else c.post("/sign", data={
-            "doc_id": "abcdef123456", "owner_id": OWNER_A, "passphrase": PASS_A, "signer_name": "Budi",
-            "document": (io.BytesIO(pdf_bytes), "surat.pdf")},
-            content_type="multipart/form-data", follow_redirects=True)
+    resp = c.post("/sign", data={
+        "doc_id": "abcdef123456", "owner_id": OWNER_A, "passphrase": PASS_A, "signer_name": "Budi",
+        "document": (io.BytesIO(pdf_bytes), "surat.pdf")},
+        content_type="multipart/form-data", follow_redirects=True)
     assert "tidak ditemukan" in resp.get_data(as_text=True)
     assert list(sigs.glob("*.json")) == []
 
 
-def test_doc_id_path_traversal_is_ignored(client):
+def test_doc_id_path_traversal_is_ignored():
     assert app_module.load_signature_record("../../etc/passwd") is None
     assert app_module.valid_doc_id("0123456789ab") is True
     assert app_module.valid_doc_id("../x") is False
 
 
 def test_sample_pdf_option_is_gone(client):
-    c, docs, sigs = client
+    c, _, sigs = client
     resp = c.post("/sign", data={"doc_id": "", "owner_id": OWNER_A, "passphrase": PASS_A,
                                  "signer_name": "Budi", "use_sample_pdf": "1"},
                   content_type="multipart/form-data", follow_redirects=True)
@@ -132,7 +131,7 @@ def test_sample_pdf_option_is_gone(client):
 
 
 def test_invalid_pdf_upload_is_rejected(client):
-    c, docs, sigs = client
+    c, _, sigs = client
     resp = c.post("/sign", data={
         "doc_id": "", "owner_id": OWNER_A, "passphrase": PASS_A, "signer_name": "Budi",
         "document": (io.BytesIO(b"bukan pdf"), "x.pdf")},

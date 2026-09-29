@@ -20,15 +20,6 @@ BLOCK_HEIGHT = (
 )
 
 
-def extract_text_content(source):
-    reader = PdfReader(source)
-    parts = []
-    for page in reader.pages:
-        text = page.extract_text() or ""
-        parts.append(text)
-    return "\n".join(parts)
-
-
 def compute_file_digest(path):
     """SHA-256 (bytes) atas SELURUH byte berkas, bukan hanya teks hasil ekstraksi."""
     hasher = hashlib.sha256()
@@ -40,10 +31,6 @@ def compute_file_digest(path):
 
 def compute_content_digest(source):
     return compute_file_digest(source)
-
-
-def compute_file_sha256(path):
-    return compute_file_digest(path).hex()
 
 
 def _fit_text(text, font, size, max_width):
@@ -152,8 +139,3 @@ def is_valid_pdf_bytes(data):
         return len(PdfReader(BytesIO(data)).pages) > 0
     except Exception:
         return False
-
-
-def get_page_count(path):
-    reader = PdfReader(path)
-    return len(reader.pages)

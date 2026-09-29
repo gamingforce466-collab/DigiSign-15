@@ -296,7 +296,8 @@ crypto/
     keys.py             pembuatan, penyimpanan, dan pemuatan kunci
     signer.py           tanda tangan RSA-PSS atas hash SHA-256
     verifier.py         verifikasi tanda tangan
-    benchmark.py        waktu, ukuran, uji tamper, ekspor Excel
+    benchmark.py        waktu, ukuran, dan uji tamper
+    excel_exporter.py   ekspor laporan pengujian ke Excel
 pdf/
     handler.py          hash PDF, blok tanda tangan, penyisipan QR-Code
 qr/
