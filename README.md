@@ -1,5 +1,18 @@
 Aplikasi web tanda tangan digital untuk PDF, Word `.docx`, JPG/JPEG, PNG, TXT, dan Excel `.xlsx`. Berkas di-hash dengan SHA-256, ditandatangani RSA-2048-PSS, lalu diverifikasi. QR-Code dipasang pada PDF, DOCX, gambar, dan XLSX; TXT menyimpan metadata verifikasi terstruktur sebagai teks.
 
+
+### Anggota Kelompok
+
+| No. | Nama Lengkap | NPM |
+| :-: | :--- | :-: |
+| 1 | Raffa Erlangga | 247006111145 |
+| 2 | Rossyada Adly | 247006111169 |
+| 3 | Rozan Aqila Daris | 247006111127 |
+
+
+
+
+
 Proyek Topik D: Aplikasi Digital Signature.
 
 ## Daftar Isi
