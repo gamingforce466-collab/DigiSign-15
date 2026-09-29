@@ -71,12 +71,12 @@ Semua pustaka Python tercantum di `requirements.txt`:
 ### Windows (PowerShell)
 
 ```
-git clone https://github.com/gamingforce466-collab/DigiSign-15
 python -m venv venv
 venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 copy .env.example .env
+
 ```
 
 Jika muncul galat `running scripts is disabled`, jalankan sekali:
@@ -90,13 +90,12 @@ Atau pakai Command Prompt: `venv\Scripts\activate.bat`.
 ### Linux dan macOS
 
 ```
-git clone https://github.com/gamingforce466-collab/DigiSign-15
-cd https://github.com/gamingforce466-collab/DigiSign-15
 python3 -m venv venv
 source venv/bin/activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 cp .env.example .env
+
 ```
 
 Ganti `USERNAME/NAMA-REPO` dengan alamat repositori Anda. Jika proyek diterima dalam bentuk ZIP, ekstrak lalu mulai dari perintah `cd`.
