@@ -10,16 +10,7 @@ Aplikasi web tanda tangan digital untuk PDF, Word `.docx`, JPG/JPEG, PNG, TXT, d
 | 3 | Rozan Aqila Daris | 247006111127 |
 
 
-
 Proyek Topik D: Aplikasi Digital Signature.
-
-## Anggota Tim
-
-| Nama anggota      | NPM          |
-| ----------------- | ------------ |
-| Raffa Erlangga    | 247006111145 |
-| Rossyada Adly     | 247006111169 |
-| Rozan Aqila Daris | 247006111127 |
 
 ## Daftar Isi
 
