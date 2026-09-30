@@ -78,10 +78,7 @@ def test_average_sign_verify_time(tmp_path):
     assert avg_verify > 0
 
 
-# ---------------------------------------------------------------------------
-# Tes fungsi inti: keygen, hash, sign, verify, tamper
-# ---------------------------------------------------------------------------
-
+# Tes fungsi keygen, hash, sign, verify, tamper
 def test_keygen_private_key_is_encrypted_on_disk():
     private_path = key_module.KEYS_DIR / f"{TEST_OWNER}_private.pem"
     data = private_path.read_bytes()
