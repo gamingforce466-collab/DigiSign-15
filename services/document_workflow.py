@@ -245,9 +245,16 @@ class DocumentWorkflow:
             metadata = qr_by_signer.get(entry["signer_id"])
             if metadata is None:
                 qr_status = "missing"
-            elif (metadata.get("hash") == record["content_hash_hex"]
-                  and metadata.get("name") == entry["signer_name"]
-                  and metadata.get("date") == entry["signed_date"]):
+            elif (metadata.get("signer_id") == entry["signer_id"]
+                  and all(
+                      metadata.get(field) == expected
+                      for field, expected in (
+                          ("hash", record["content_hash_hex"]),
+                          ("name", entry["signer_name"]),
+                          ("date", entry["signed_date"]),
+                      )
+                      if field in metadata
+                  )):
                 qr_status = "ok"
             else:
                 qr_status = "mismatch"
@@ -287,3 +294,39 @@ class DocumentWorkflow:
             return self.compute_verification(temp_path, manual_doc_id, override_public_key, extension)
         finally:
             temp_path.unlink(missing_ok=True)
+
+    def verify_stored_document(self, doc_id, link_metadata=None):
+        record = self.load_signature_record(doc_id)
+        if record is None:
+            return {"status": "NOT_FOUND", "error": f"Doc ID {doc_id} tidak ditemukan."}
+
+        extension = self.record_file_extension(record)
+        signed_path = self.documents_dir / f"{doc_id}_signed{extension}"
+        if not signed_path.is_file():
+            return {"status": "NOT_FOUND", "error": "Berkas bertanda tangan tidak ditemukan di server."}
+
+        results = self.verify_bytes(
+            signed_path.read_bytes(), doc_id, original_filename=signed_path.name
+        )
+        link_metadata = link_metadata or {}
+        link_fields = ("signer_id", "name", "position", "institution", "date", "hash")
+        if any(link_metadata.get(field) for field in link_fields):
+            signer = next(
+                (entry for entry in record.get("signers", [])
+                 if entry["signer_id"] == link_metadata.get("signer_id")),
+                None,
+            )
+            expected = {
+                "signer_id": signer.get("signer_id") if signer else None,
+                "name": signer.get("signer_name") if signer else None,
+                "position": signer.get("position") if signer else None,
+                "institution": signer.get("institution") if signer else None,
+                "date": signer.get("signed_date") if signer else None,
+                "hash": record["content_hash_hex"],
+            }
+            if any(link_metadata.get(field) and link_metadata[field] != value for field, value in expected.items()):
+                if results.get("status") == "VALID":
+                    results["status"] = "QR_FORGED"
+                    results["overall_valid"] = False
+                    results["error"] = "Metadata pada tautan QR tidak cocok dengan catatan tanda tangan."
+        return results

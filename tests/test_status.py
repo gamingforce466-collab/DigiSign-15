@@ -1,6 +1,7 @@
 """Tes status verifikasi: VALID, TAMPERED, KEY_MISMATCH, QR_FORGED, dan 3 penandatangan."""
 import os
 import sys
+from urllib.parse import urlsplit
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -9,6 +10,7 @@ import pytest
 import app as app_module
 import randomdata
 from crypto import keys as key_module
+from qr import generator as qr_module
 
 OWNERS = [("pytest_status_a", "pass_status_a"), ("pytest_status_b", "pass_status_b"),
           ("pytest_status_c", "pass_status_c")]
@@ -190,6 +192,36 @@ def test_verify_page_opens_and_is_named_verifikasi(env):
     assert "Verifikasi Manual" not in html and "autotest" not in html
     assert ">Verifikasi</a>" in html
     assert c.get("/verify?doc_id=abcdef123456").status_code == 200
+
+
+def test_qr_deep_link_verifies_stored_copy_and_rejects_forged_metadata(env):
+    docs, _ = env
+    doc_id, _ = sign_three(docs)
+    record = app_module.load_signature_record(doc_id)
+    signer = record["signers"][0]
+    metadata = {
+        "doc_id": doc_id,
+        "signer_id": signer["signer_id"],
+        "name": signer["signer_name"],
+        "position": signer["position"],
+        "institution": signer["institution"],
+        "date": signer["signed_date"],
+        "hash": record["content_hash_hex"],
+        "verify_url": f"{app_module.VERIFY_BASE_URL}?doc_id={doc_id}",
+    }
+    client = app_module.app.test_client()
+
+    qr = qr_module.decode_qr_image(qr_module.generate_qr_image(metadata))
+    valid_url = urlsplit(qr["verify_url"])
+    valid_response = client.get(f"{valid_url.path}?{valid_url.query}")
+    assert valid_response.status_code == 200
+    assert '<p class="text-2xl font-bold">VALID</p>' in valid_response.get_data(as_text=True)
+
+    metadata["name"] = "Pemalsu"
+    forged_qr = qr_module.decode_qr_image(qr_module.generate_qr_image(metadata))
+    forged_url = urlsplit(forged_qr["verify_url"])
+    forged_response = client.get(f"{forged_url.path}?{forged_url.query}")
+    assert '<p class="text-2xl font-bold">QR_FORGED</p>' in forged_response.get_data(as_text=True)
 
 
 def test_verify_upload_via_web_all_statuses(env):

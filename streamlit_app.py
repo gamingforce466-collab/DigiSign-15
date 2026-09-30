@@ -27,6 +27,7 @@ import document_formats
 import randomdata
 from crypto import benchmark as benchmark_module
 from crypto import excel_exporter, keys as key_module
+from qr import generator as qr_module
 from services import maintenance as maintenance_service
 
 MAX_SOURCE_DOCUMENT_SIZE = 30 * 1024 * 1024
@@ -185,24 +186,7 @@ def _open_signing_page(doc_id):
     st.session_state["page"] = "Tanda Tangan"
 
 def _verify_stored_document(doc_id):
-    record = flask_app.load_signature_record(doc_id)
-    if record is None:
-        st.session_state["last_verification"] = {
-            "status": "NOT_FOUND",
-            "error": f"Doc ID {doc_id} tidak ditemukan.",
-        }
-    else:
-        extension = flask_app.record_file_extension(record)
-        signed_path = flask_app.DOCUMENTS_DIR / f"{doc_id}_signed{extension}"
-        if not signed_path.is_file():
-            st.session_state["last_verification"] = {
-                "status": "NOT_FOUND",
-                "error": "Berkas bertanda tangan tidak ditemukan di storage.",
-            }
-        else:
-            st.session_state["last_verification"] = flask_app.verify_pdf_bytes(
-                signed_path.read_bytes(), original_filename=signed_path.name
-            )
+    st.session_state["last_verification"] = flask_app.verify_stored_document(doc_id)
     st.session_state["verify_doc_id"] = doc_id
     st.session_state["page"] = "Verifikasi"
 
@@ -455,10 +439,13 @@ def _show_verification_result(results):
 
 def _render_verification():
     st.title("Verifikasi")
-    st.caption("Unggah dokumen bertanda tangan untuk memeriksa integritas, QR-Code, dan tanda tangan.")
+    st.caption("Pindai tautan QR untuk memeriksa salinan tersimpan, atau unggah dokumen untuk memeriksa berkas yang Anda miliki.")
     query_doc_id = st.query_params.get("doc_id", "")
     if "verify_doc_id" not in st.session_state:
         st.session_state["verify_doc_id"] = query_doc_id
+
+    if query_doc_id and st.session_state.get("last_verification"):
+        st.info("Hasil dari tautan QR memeriksa salinan bertanda tangan yang tersimpan. Unggah berkas di bawah untuk memeriksa salinan dokumen Anda.")
 
     with st.form("verify_document_form"):
         uploaded = st.file_uploader(
@@ -559,8 +546,19 @@ def _render_benchmark():
 
 _require_access()
 
-if st.query_params.get("doc_id") and "page" not in st.session_state:
-    st.session_state["page"] = "Verifikasi"
+query_doc_id = st.query_params.get("doc_id", "").strip()
+if query_doc_id:
+    link_metadata = qr_module.decode_verification_query(dict(st.query_params))
+    qr_link = (query_doc_id, st.query_params.get("m", ""))
+    if st.session_state.get("last_qr_link") != qr_link:
+        st.session_state["page"] = "Verifikasi"
+        st.session_state["verify_doc_id"] = query_doc_id
+        st.session_state["last_verification"] = flask_app.verify_stored_document(
+            query_doc_id, link_metadata
+        )
+        st.session_state["last_qr_link"] = qr_link
+elif "last_qr_link" in st.session_state:
+    del st.session_state["last_qr_link"]
 
 st.sidebar.title("DigiSign")
 page = st.sidebar.radio(

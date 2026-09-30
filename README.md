@@ -13,8 +13,17 @@ Aplikasi web tanda tangan digital untuk PDF, Word `.docx`, JPG/JPEG, PNG, TXT, d
 
 Proyek Topik D: Aplikasi Digital Signature.
 
+## Anggota Tim
+
+| Nama anggota      | NPM          |
+| ----------------- | ------------ |
+| Raffa Erlangga    | 247006111145 |
+| Rossyada Adly     | 247006111169 |
+| Rozan Aqila Daris | 247006111127 |
+
 ## Daftar Isi
 
+- [Anggota Tim](#anggota-tim)
 - [Daftar Isi](#daftar-isi)
 - [Fitur](#fitur)
 - [Kebutuhan Sistem](#kebutuhan-sistem)
@@ -164,10 +173,9 @@ Untuk Streamlit Community Cloud, pilih `streamlit_app.py` sebagai **Main file pa
 
 ```toml
 STREAMLIT_ACCESS_PASSWORD = "password-minimal-8-karakter"
-STREAMLIT_VERIFY_BASE_URL = "https://nama-aplikasi.streamlit.app"
 ```
 
-Password diperlukan untuk membuka aplikasi. Setelah login, semua fitur termasuk data acak dan hapus penyimpanan tersedia. `digisign` bisa dipakai untuk demo, tetapi mudah ditebak sehingga jangan gunakan untuk aplikasi publik atau dokumen sensitif. Tautan QR dokumen baru menggunakan `STREAMLIT_VERIFY_BASE_URL`. `DIGISIGN_DATA_DIR` dapat diarahkan ke volume persisten pada host yang mendukungnya; disk lokal Streamlit Community Cloud tidak persisten, jadi dokumen dan kunci di sana hanya cocok untuk demo sementara. Jangan simpan password, kunci, atau data dokumen ke Git.
+Password diperlukan untuk membuka aplikasi. Setelah login, semua fitur termasuk data acak dan hapus penyimpanan tersedia. `digisign` bisa dipakai untuk demo, tetapi mudah ditebak sehingga jangan gunakan untuk aplikasi publik atau dokumen sensitif. URL tautan QR dideteksi otomatis dari alamat aplikasi; `STREAMLIT_VERIFY_BASE_URL` hanya diperlukan jika ingin menggantinya. `DIGISIGN_DATA_DIR` dapat diarahkan ke volume persisten pada host yang mendukungnya; disk lokal Streamlit Community Cloud tidak persisten, jadi dokumen dan kunci di sana hanya cocok untuk demo sementara. Jangan simpan password, kunci, atau data dokumen ke Git.
 
 Agar dapat diakses dari perangkat lain di jaringan yang sama:
 
@@ -196,6 +204,8 @@ Passphrase tidak disimpan. Jika hilang, kunci tidak bisa dipakai lagi.
 3. Klik **Tandatangani**.
 4. Klik **Unduh**. Berkas hasil tetap memakai format asal. TXT menyertakan metadata teks; format lain menyertakan QR-Code.
 
+Di Streamlit, proses menampilkan indikator berjalan. Setelah sukses, passphrase dan file dari form dibersihkan; tombol unduh, verifikasi hasil tersimpan, dan tambah penandatangan langsung tersedia. Klik tombol unduh untuk menyimpan file ke perangkat.
+
 Pada antarmuka Flask, tombol **Isi acak** (jika `ENABLE_TEST_TOOLS=1`) mengisi nama kunci, passphrase, dan data penandatangan dengan nilai acak. Di Streamlit, tombol ini tersedia untuk semua pengguna yang berhasil login. Berkas dokumen tetap dipilih manual.
 
 ### 3. Menambah penandatangan
@@ -209,9 +219,11 @@ Mengunggah ulang hasil tanda tangan dengan pilihan _Dokumen baru_ akan membuat d
 
 ### 4. Verifikasi
 
-1. Buka **Verifikasi**.
-2. Unggah dokumen bertanda tangan (PDF, DOCX, JPG/JPEG, PNG, TXT, atau XLSX). Doc ID dibaca dari QR-Code, atau dari metadata teks untuk TXT. Request verifikasi menerima hasil hingga 64 MiB.
-3. Klik **Verifikasi**. Hasil berupa status, kondisi isi dokumen, jumlah QR-Code terbaca, dan tabel penandatangan.
+1. Pindai QR pada dokumen dengan kamera atau pemindai QR. Tautan langsung membuka halaman **Verifikasi** dan menampilkan hasil pemeriksaan salinan bertanda tangan yang tersimpan.
+2. Untuk memeriksa salinan berkas yang Anda miliki, unggah dokumen bertanda tangan (PDF, DOCX, JPG/JPEG, PNG, TXT, atau XLSX), lalu klik **Verifikasi**. Doc ID dapat dibaca dari QR-Code atau metadata teks TXT. Request verifikasi menerima hasil hingga 64 MiB.
+3. Hasil menampilkan status, kondisi isi dokumen, jumlah QR-Code terbaca, dan tabel penandatangan.
+
+QR mengodekan URL langsung dengan Doc ID dan metadata penandatangan terkompresi. Halaman Verifikasi memvalidasi metadata tersebut terhadap record dan mengambil identitas penandatangan dari catatan resmi aplikasi.
 
 Opsi tambahan:
 
@@ -243,17 +255,18 @@ PDF versi lama (misalnya hanya memuat 1 dari 2 blok tanda tangan) tetap `VALID` 
 pytest tests/ -v -s
 ```
 
-Total 65 tes. Opsi `-s` menampilkan angka waktu dan ukuran di terminal.
+Total 95 tes. Opsi `-s` menampilkan angka waktu dan ukuran di terminal.
 
 | Berkas                           | Jumlah | Isi                                                                                                                                |
 | -------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `tests/test_crypto.py`           | 10     | Pembuatan kunci terenkripsi, hash SHA-256, sign, verify, tamper, tanda tangan rusak, waktu 30 percobaan, ukuran, benchmark         |
 | `tests/test_tamper.py`           | 6      | Ubah 1 byte di berbagai posisi, kunci publik salah                                                                                 |
-| `tests/test_qr.py`               | 4      | Pembuatan dan pembacaan QR-Code, metadata palsu                                                                                    |
-| `tests/test_status.py`           | 16     | Status VALID, TAMPERED, KEY_MISMATCH, QR_FORGED, NOT_FOUND, NO_QR, tiga penandatangan, halaman Verifikasi, Excel, tombol Bersihkan |
+| `tests/test_qr.py`               | 6      | Pembuatan dan pembacaan QR-Code, metadata palsu, tautan verifikasi langsung                                                        |
+| `tests/test_status.py`           | 17     | Status VALID, TAMPERED, KEY_MISMATCH, QR_FORGED, NOT_FOUND, NO_QR, tiga penandatangan, halaman Verifikasi, Excel, tombol Bersihkan |
 | `tests/test_flow.py`             | 10     | Alur web PDF dan format DOCX/JPG/JPEG/PNG/TXT/XLSX, tamper, dan batas upload 30 MiB                                                |
 | `tests/test_enrichment.py`       | 11     | Beberapa penandatangan, blok tanda tangan PDF, Isi acak                                                                            |
 | `tests/test_document_formats.py` | 8      | Validasi serta penyisipan/ekstraksi QR PDF, DOCX, JPG/JPEG, PNG, TXT, dan XLSX                                                     |
+| `tests/test_streamlit_app.py`    | 27     | Alur UI Streamlit, semua format, status verifikasi, login, persistensi, tombol unduh, reset, benchmark, dan tautan QR              |
 
 Menjalankan satu berkas atau satu tes:
 
@@ -304,6 +317,9 @@ python -m crypto.benchmark 100
 - Nama kunci divalidasi dengan pola `[A-Za-z0-9_-]{1,40}` untuk mencegah path traversal.
 - Tanda tangan dibuat atas hash SHA-256 seluruh byte berkas. Perubahan satu byte mengubah hash sehingga verifikasi gagal.
 - Metadata QR (atau blok metadata pada TXT) dicocokkan dengan catatan tanda tangan di server (Doc ID, penandatangan, nama, tanggal, hash), sehingga metadata palsu ditolak.
+- Upload dibatasi ukuran dan diperiksa format/strukturnya, tetapi aplikasi tidak menjalankan pemindai malware; jangan anggap file upload 100% aman.
+- Streamlit memakai satu password bersama. Pengguna yang berhasil login dapat mengakses storage bersama, mengunduh key terenkripsi, dan menghapus seluruh data; ini mode demo, bukan isolasi akun untuk produksi.
+- Storage lokal Streamlit Community Cloud dapat hilang saat restart atau redeploy. Gunakan layanan penyimpanan persisten eksternal jika data harus bertahan.
 - Berkas berikut tidak boleh diunggah ke GitHub. Semuanya sudah ada di `.gitignore`:
 
 ```
@@ -405,6 +421,6 @@ Perilaku format:
 
 - Skema tanda tangan yang dipakai hanya RSA-2048-PSS. ECDSA P-256 hanya pembanding di benchmark.
 - Tanda tangan ganda klasik dan pasca-kuantum (ECDSA + ML-DSA) dan penyimpanan hash pada blockchain uji belum tersedia. Pengayaan yang diambil adalah beberapa penandatangan pada satu dokumen.
-- Tautan verifikasi di QR-Code membuka halaman Verifikasi dengan Doc ID terisi. Pengguna tetap mengunggah dokumen bertanda tangan untuk memeriksa keutuhannya.
+- Tautan verifikasi di QR-Code membuka halaman Verifikasi dan otomatis memeriksa salinan bertanda tangan yang tersimpan. Pengguna tetap dapat mengunggah berkas untuk memeriksa salinan dokumen yang dimiliki secara langsung.
 - Data disimpan sebagai berkas lokal di folder `storage/`, tanpa basis data dan tanpa akun pengguna.
 - Server bawaan Flask tidak untuk produksi.

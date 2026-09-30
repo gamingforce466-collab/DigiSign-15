@@ -4,6 +4,9 @@
     <h2 class="text-lg font-semibold text-slate-800">Verifikasi</h2>
   </div>
   <p class="text-sm text-slate-500 mb-4">Unggah PDF, DOCX, JPG/JPEG, PNG, TXT, atau XLSX bertanda tangan. TXT memakai metadata teks; format lain dibaca dari QR-Code.</p>
+  {% if qr_deeplink %}
+  <p class="text-sm text-sky-800 bg-sky-50 rounded p-3 mb-4">Tautan QR memeriksa salinan bertanda tangan yang tersimpan. Unggah berkas di bawah untuk memeriksa salinan dokumen yang Anda miliki.</p>
+  {% endif %}
   <form method="POST" enctype="multipart/form-data" class="space-y-3">
     <div>
       <label class="block text-sm text-slate-600 mb-1">Berkas dokumen</label>

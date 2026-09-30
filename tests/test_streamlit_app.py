@@ -1,6 +1,7 @@
 import io
 import os
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from docx import Document
@@ -10,7 +11,9 @@ from reportlab.pdfgen import canvas
 from streamlit.testing.v1 import AppTest
 
 import app as app_module
+import document_formats
 from crypto import keys as key_module
+from qr import generator as qr_module
 
 ROOT = Path(__file__).resolve().parents[1]
 STREAMLIT_APP = ROOT / "streamlit_app.py"
@@ -142,12 +145,14 @@ def test_streamlit_sign_and_verify_every_supported_format(demo_storage, extensio
     doc_id = records[0].stem
     signed_path = documents_dir / f"{doc_id}_signed{extension}"
     assert signed_path.is_file()
+    decoded_qr = document_formats.extract_qr_metadata(signed_path, extension)
+    assert decoded_qr and any(item.get("doc_id") == doc_id for item in decoded_qr), decoded_qr
 
     app.radio(key="page").set_value("Verifikasi").run()
     app.file_uploader[0].upload(signed_path.name, signed_path.read_bytes(), MIME_TYPES[extension]).run(timeout=60)
     app.button(key="FormSubmitter:verify_document_form-Verifikasi").click().run(timeout=60)
     assert not app.exception, app.exception
-    assert any(message.value.startswith("VALID:") for message in app.success)
+    assert any(message.value.startswith("VALID:") for message in app.success), app.session_state.get("last_verification")
     tampered = _tamper_document(signed_path.read_bytes(), extension)
     tampered_result = _verify_in_streamlit(tampered, signed_path.name, doc_id)
     assert any(message.value.startswith("TAMPERED:") for message in tampered_result.error)
@@ -386,6 +391,44 @@ def test_streamlit_deep_link_opens_verification_with_doc_id(demo_storage):
     assert not app.exception, app.exception
     assert app.radio(key="page").value == "Verifikasi"
     assert app.text_input(key="verify_doc_id").value == "abcdef123456"
+    assert app.session_state["last_verification"]["status"] == "NOT_FOUND"
+
+
+def test_streamlit_qr_deep_link_verifies_stored_document_and_checks_metadata(demo_storage):
+    doc_id, record = app_module.perform_signing(
+        OWNER_A, PASS_A, "Penandatangan QR", "Ketua", "Universitas Demo",
+        "2026-09-30", pdf_bytes=_sample_document(".pdf"), original_filename="qr-demo.pdf",
+    )
+    signer = record["signers"][0]
+    qr_metadata = {
+        "doc_id": doc_id,
+        "signer_id": signer["signer_id"],
+        "name": signer["signer_name"],
+        "position": signer["position"],
+        "institution": signer["institution"],
+        "date": signer["signed_date"],
+        "hash": record["content_hash_hex"],
+        "verify_url": f"http://localhost:8501?doc_id={doc_id}",
+    }
+    decoded_qr = qr_module.decode_qr_image(qr_module.generate_qr_image(qr_metadata))
+    query = parse_qs(urlsplit(decoded_qr["verify_url"]).query)
+    app = AppTest.from_file(str(STREAMLIT_APP), default_timeout=60)
+    app.query_params["doc_id"] = doc_id
+    app.query_params["m"] = query["m"][0]
+    app.run()
+    app.text_input[0].set_value(ACCESS_PASSWORD)
+    app.button(key="FormSubmitter:access_form-Masuk").click().run()
+
+    assert not app.exception, app.exception
+    assert app.radio(key="page").value == "Verifikasi"
+    assert app.session_state["last_verification"]["status"] == "VALID"
+
+    qr_metadata["name"] = "Pemalsu"
+    forged_qr = qr_module.decode_qr_image(qr_module.generate_qr_image(qr_metadata))
+    app.query_params["m"] = parse_qs(urlsplit(forged_qr["verify_url"]).query)["m"][0]
+    app.run()
+    assert not app.exception, app.exception
+    assert app.session_state["last_verification"]["status"] == "QR_FORGED"
 
 
 def test_streamlit_sign_form_reports_invalid_password_and_invalid_document(demo_storage):

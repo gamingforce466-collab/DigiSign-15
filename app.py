@@ -133,6 +133,10 @@ def verify_pdf_bytes(data, manual_doc_id="", override_public_key=None, original_
     return _document_workflow().verify_bytes(data, manual_doc_id, override_public_key, original_filename)
 
 
+def verify_stored_document(doc_id, link_metadata=None):
+    return _document_workflow().verify_stored_document(doc_id, link_metadata)
+
+
 def flip_one_byte(data):
     return scenario_service.flip_one_byte(data)
 
@@ -282,7 +286,14 @@ def verify_page():
     """Verifikasi MANUAL: pengguna mengunggah PDF sendiri."""
     prefill = request.args.get("doc_id", "").strip()
     if request.method == "GET":
-        return render_template("verify.html", prefill_doc_id=prefill)
+        link_metadata = qr_module.decode_verification_query(request.args)
+        results = verify_stored_document(prefill, link_metadata) if prefill else None
+        return render_template(
+            "verify.html",
+            prefill_doc_id=prefill,
+            results=results,
+            qr_deeplink=bool(request.args.get("m")),
+        )
 
     uploaded_file = request.files.get("document")
     override_key_file = request.files.get("override_public_key")

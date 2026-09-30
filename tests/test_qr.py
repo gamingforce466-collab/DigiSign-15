@@ -23,6 +23,28 @@ def test_qr_generate_and_decode_roundtrip():
     assert decoded["hash"] == metadata["hash"]
 
 
+def test_qr_verification_url_opens_page_and_preserves_metadata():
+    metadata = {
+        "doc_id": "abc123",
+        "signer_id": "signer01",
+        "name": "Budi Santoso",
+        "position": "Ketua Panitia",
+        "institution": "Universitas Contoh",
+        "date": "2026-09-27",
+        "hash": "a" * 64,
+        "verify_url": "https://digisign.example/verify?doc_id=abc123",
+    }
+    decoded = qr_module.decode_qr_image(qr_module.generate_qr_image(metadata))
+
+    assert decoded is not None
+    assert decoded["verify_url"].startswith("https://digisign.example/verify?")
+    assert all(decoded[field] == value for field, value in metadata.items() if field != "verify_url")
+
+
+def test_qr_verification_url_rejects_invalid_compressed_metadata():
+    assert qr_module.decode_verification_query({"doc_id": "abc123", "m": "not-valid"}) is None
+
+
 def test_qr_tampered_metadata_mismatch():
     original_metadata = {
         "doc_id": "doc001",

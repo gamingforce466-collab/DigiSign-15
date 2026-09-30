@@ -1,11 +1,82 @@
+import binascii
+import base64
 import json
+import zlib
+from urllib.parse import parse_qs, parse_qsl, urlencode, urlsplit, urlunsplit
+
 import qrcode
 import cv2
 import numpy as np
 
 
+def _encode_payload(metadata):
+    verify_url = metadata.get("verify_url")
+    if not verify_url:
+        return json.dumps(metadata, separators=(",", ":"), sort_keys=True)
+
+    parts = urlsplit(verify_url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query["doc_id"] = str(metadata["doc_id"])
+    serialized = json.dumps(
+        {key: value for key, value in metadata.items() if key != "verify_url"},
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    query["m"] = base64.urlsafe_b64encode(zlib.compress(serialized, 9)).decode("ascii").rstrip("=")
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+
+
+def decode_verification_query(query):
+    encoded = query.get("m", "")
+    if isinstance(encoded, (list, tuple)):
+        encoded = encoded[0] if encoded else ""
+    if encoded:
+        try:
+            token = str(encoded)
+            compressed = base64.urlsafe_b64decode(token + "=" * (-len(token) % 4))
+            decompressor = zlib.decompressobj()
+            serialized = decompressor.decompress(compressed, 4096)
+            if decompressor.unconsumed_tail or decompressor.unused_data or not decompressor.eof:
+                return None
+            metadata = json.loads(serialized)
+        except (binascii.Error, UnicodeDecodeError, ValueError, zlib.error):
+            return None
+        doc_id = query.get("doc_id", "")
+        if isinstance(doc_id, (list, tuple)):
+            doc_id = doc_id[0] if doc_id else ""
+        if not isinstance(metadata, dict) or metadata.get("doc_id") != doc_id:
+            return None
+        return metadata
+
+    metadata = {}
+    for key, value in query.items():
+        if isinstance(value, (list, tuple)):
+            value = value[0] if value else ""
+        metadata[key] = value
+    return metadata if metadata.get("doc_id") else None
+
+
+def decode_verification_url(url):
+    query = parse_qs(urlsplit(url).query, keep_blank_values=True)
+    metadata = decode_verification_query(query)
+    if metadata is not None:
+        metadata["verify_url"] = url
+    return metadata
+
+
+def _decode_payload(data):
+    try:
+        parsed = json.loads(data)
+    except json.JSONDecodeError:
+        parts = urlsplit(data)
+        if parts.scheme not in {"http", "https"} or not parts.netloc:
+            return None
+        parsed = decode_verification_url(data)
+    return parsed if isinstance(parsed, dict) else None
+
+
 def generate_qr_image(metadata):
-    payload = json.dumps(metadata, separators=(",", ":"), sort_keys=True)
+    payload = _encode_payload(metadata)
     qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=6, border=2)
     qr.add_data(payload)
     qr.make(fit=True)
@@ -41,11 +112,8 @@ def decode_qr_image(pil_image):
                 continue
             if not data:
                 continue
-            try:
-                parsed = json.loads(data)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(parsed, dict):
+            parsed = _decode_payload(data)
+            if parsed is not None:
                 return parsed
     return None
 
@@ -69,11 +137,8 @@ def decode_qr_image_multiple(pil_image):
             for value in values:
                 if not value or value in seen:
                     continue
-                try:
-                    parsed = json.loads(value)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(parsed, dict):
+                parsed = _decode_payload(value)
+                if parsed is not None:
                     results.append(parsed)
                     seen.add(value)
     if results:
