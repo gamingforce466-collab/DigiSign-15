@@ -364,9 +364,9 @@ qr/
   templates/              halaman HTML Jinja2
   static/                 CSS dan JavaScript browser
 storage/
-    keys/               kunci (tidak di-commit)
-    documents/          berkas asli dan bertanda tangan (tidak di-commit)
-    signatures/         catatan tanda tangan JSON (tidak di-commit)
+    keys/               kunci 
+    documents/          berkas asli dan bertanda tangan 
+    signatures/         catatan tanda tangan JSON 
   tests/                  tes unit, alur web, format, dan serangan
 ```
 
