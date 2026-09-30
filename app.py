@@ -115,10 +115,7 @@ def perform_signing(*args, **kwargs):
     return _document_workflow().perform_signing(*args, **kwargs)
 
 
-# ---------------------------------------------------------------------------
 # Verifikasi (dipakai oleh halaman /verify dan uji otomatis)
-# ---------------------------------------------------------------------------
-
 def decide_status(integrity_ok, signers, qr_forged):
     return _document_workflow().decide_status(integrity_ok, signers, qr_forged)
 
@@ -153,10 +150,7 @@ def paste_real_qr_on_other_pdf(signed_pdf_bytes):
     )
 
 
-# ---------------------------------------------------------------------------
 # Halaman utama
-# ---------------------------------------------------------------------------
-
 @app.route("/")
 def index():
     records = list_signature_records()
@@ -320,16 +314,9 @@ def verify_page():
 
     results = verify_pdf_bytes(document_bytes, manual_doc_id, override_public_key, uploaded_file.filename)
     return render_results(results)
-
-
-# ---------------------------------------------------------------------------
 # Data acak untuk tombol "Isi acak"
-# ---------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
 # Benchmark (waktu dan ukuran) dengan ekspor Excel
-# ---------------------------------------------------------------------------
-
 def store_quantitative(report):
     """Simpan hasil dan berkas Excel sekali saja; unduhan hanya mengirim berkas ini."""
     app.config["LAST_QUANT"] = report
