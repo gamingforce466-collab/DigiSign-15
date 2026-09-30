@@ -437,6 +437,35 @@ def _show_verification_result(results):
     )
 
 
+def _render_verified_document_download(results, uploaded=None):
+    if results.get("status") != "VALID":
+        return
+
+    if uploaded is not None:
+        document_bytes = uploaded.getvalue()
+        file_name = uploaded.name
+    else:
+        doc_id = results.get("doc_id", "")
+        record = flask_app.load_signature_record(doc_id)
+        if record is None:
+            return
+        extension = flask_app.record_file_extension(record)
+        signed_path = flask_app.DOCUMENTS_DIR / f"{doc_id}_signed{extension}"
+        if not signed_path.is_file():
+            return
+        document_bytes = signed_path.read_bytes()
+        file_name = signed_path.name
+
+    extension = document_formats.extension_for(file_name, ".pdf")
+    st.download_button(
+        "Unduh dokumen terverifikasi",
+        data=document_bytes,
+        file_name=file_name,
+        mime=document_formats.MIME_TYPES[extension],
+        key=f"download_verified_{results.get('doc_id', 'upload')}_{file_name}",
+    )
+
+
 def _render_verification():
     st.title("Verifikasi")
     st.caption("Pindai tautan QR untuk memeriksa salinan tersimpan, atau unggah dokumen untuk memeriksa berkas yang Anda miliki.")
@@ -488,6 +517,7 @@ def _render_verification():
     if results:
         st.subheader("Hasil verifikasi")
         _show_verification_result(results)
+        _render_verified_document_download(results, uploaded)
 
 
 def _render_benchmark():
@@ -544,17 +574,30 @@ def _render_benchmark():
     )
 
 
+query_doc_id = st.query_params.get("doc_id", "").strip()
+qr_link_metadata = qr_module.decode_verification_query(dict(st.query_params))
+public_qr_fields = ("signer_id", "name", "position", "institution", "date", "hash")
+if (query_doc_id and qr_link_metadata
+        and qr_link_metadata.get("doc_id") == query_doc_id
+        and all(qr_link_metadata.get(field) for field in public_qr_fields)):
+    st.title("Verifikasi Dokumen")
+    st.caption("Hasil pemeriksaan dokumen dari tautan QR.")
+    st.session_state["last_verification"] = flask_app.verify_stored_document(
+        query_doc_id, qr_link_metadata
+    )
+    _show_verification_result(st.session_state["last_verification"])
+    _render_verified_document_download(st.session_state["last_verification"])
+    st.stop()
+
 _require_access()
 
-query_doc_id = st.query_params.get("doc_id", "").strip()
 if query_doc_id:
-    link_metadata = qr_module.decode_verification_query(dict(st.query_params))
     qr_link = (query_doc_id, st.query_params.get("m", ""))
     if st.session_state.get("last_qr_link") != qr_link:
         st.session_state["page"] = "Verifikasi"
         st.session_state["verify_doc_id"] = query_doc_id
         st.session_state["last_verification"] = flask_app.verify_stored_document(
-            query_doc_id, link_metadata
+            query_doc_id, qr_link_metadata
         )
         st.session_state["last_qr_link"] = qr_link
 elif "last_qr_link" in st.session_state:

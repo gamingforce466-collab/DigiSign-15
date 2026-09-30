@@ -153,9 +153,11 @@ def test_streamlit_sign_and_verify_every_supported_format(demo_storage, extensio
     app.button(key="FormSubmitter:verify_document_form-Verifikasi").click().run(timeout=60)
     assert not app.exception, app.exception
     assert any(message.value.startswith("VALID:") for message in app.success), app.session_state.get("last_verification")
+    assert any(button.label == "Unduh dokumen terverifikasi" for button in app.download_button)
     tampered = _tamper_document(signed_path.read_bytes(), extension)
     tampered_result = _verify_in_streamlit(tampered, signed_path.name, doc_id)
     assert any(message.value.startswith("TAMPERED:") for message in tampered_result.error)
+    assert not any(button.label == "Unduh dokumen terverifikasi" for button in tampered_result.download_button)
 
 
 @pytest.mark.parametrize(
@@ -416,11 +418,12 @@ def test_streamlit_qr_deep_link_verifies_stored_document_and_checks_metadata(dem
     app.query_params["doc_id"] = doc_id
     app.query_params["m"] = query["m"][0]
     app.run()
-    app.text_input[0].set_value(ACCESS_PASSWORD)
-    app.button(key="FormSubmitter:access_form-Masuk").click().run()
 
     assert not app.exception, app.exception
-    assert app.radio(key="page").value == "Verifikasi"
+    assert not app.radio
+    assert not app.text_input
+    assert any(message.value.startswith("VALID:") for message in app.success)
+    assert any(button.label == "Unduh dokumen terverifikasi" for button in app.download_button)
     assert app.session_state["last_verification"]["status"] == "VALID"
 
     qr_metadata["name"] = "Pemalsu"
@@ -428,7 +431,9 @@ def test_streamlit_qr_deep_link_verifies_stored_document_and_checks_metadata(dem
     app.query_params["m"] = parse_qs(urlsplit(forged_qr["verify_url"]).query)["m"][0]
     app.run()
     assert not app.exception, app.exception
+    assert not app.radio
     assert app.session_state["last_verification"]["status"] == "QR_FORGED"
+    assert not any(button.label == "Unduh dokumen terverifikasi" for button in app.download_button)
 
 
 def test_streamlit_sign_form_reports_invalid_password_and_invalid_document(demo_storage):
