@@ -1,4 +1,4 @@
-"""Pembangkit data contoh untuk tombol Isi Data Acak dan pengujian.
+"""Generator contoh data untuk tombol Isi Data Acak dan pengujian.
 
 Dipakai oleh halaman web dan tes supaya data tidak perlu diketik berulang kali.
 Seluruh nilai rahasia (passphrase) dibangkitkan dengan modul `secrets` (CSPRNG).
@@ -14,11 +14,11 @@ from reportlab.pdfgen import canvas
 
 FIRST_NAMES = [
     "Budi", "Siti", "Agus", "Dewi", "Rizky", "Putri", "Andi", "Ratna", "Fajar", "Nadia",
-    "Hendra", "Maya", "Dimas", "Lestari", "Bagas", "Anisa", "Eko", "Wulan", "Yusuf", "Intan",
+    "Hendra", "Maya", "Dimas", "Lestari", "Bagas", "Anisa", "Hava", "Wulan", "Yusuf", "Intan",
 ]
 LAST_NAMES = [
     "Santoso", "Aminah", "Wijaya", "Pratama", "Kusuma", "Rahmawati", "Hidayat", "Nugroho",
-    "Saputra", "Purnama", "Maulana", "Setiawan", "Lubis", "Permana", "Handayani",
+    "Saputra", "Purnama", "Maulana", "Setiawan", "Nagila", "Permana", "Handayani",
 ]
 POSITIONS = [
     "Ketua Panitia", "Sekretaris", "Dekan Fakultas", "Kepala Program Studi", "Dosen Pembimbing",
