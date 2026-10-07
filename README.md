@@ -88,6 +88,8 @@ Semua pustaka Python tercantum di `requirements.txt`:
 ### Windows (PowerShell)
 
 ```
+Install python terlebih dahulu
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 python -m venv venv
 venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
@@ -95,13 +97,6 @@ pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Jika muncul galat `running scripts is disabled`, jalankan sekali:
-
-```
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
-
-Atau pakai Command Prompt: `venv\Scripts\activate.bat`.
 
 ### Linux dan macOS
 
