@@ -90,6 +90,7 @@ Semua pustaka Python tercantum di `requirements.txt`:
 ```
 Install python terlebih dahulu
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+Y/N: Y
 python -m venv venv
 venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
